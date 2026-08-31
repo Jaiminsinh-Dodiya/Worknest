@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
+import TitleBar from '../components/layout/TitleBar';
 
 export default function Login() {
   const [email, setEmail] = useState('demo@worknest.local');
@@ -22,7 +23,9 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 px-4">
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-slate-900 overflow-hidden">
+      <TitleBar title="WorkNest — Login" />
+      <div className="flex-1 flex items-center justify-center px-4 overflow-y-auto">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -122,6 +125,7 @@ export default function Login() {
             <span className="text-primary-600 dark:text-primary-400">demo@worknest.local</span>
           </p>
         </div>
+      </div>
       </div>
     </div>
   );
