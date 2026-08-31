@@ -42,12 +42,12 @@ export default function WindowControls({ className = '' }) {
       <button
         type="button"
         onClick={handleClose}
-        className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E] hover:bg-[#E0443E] active:bg-[#BF4C47] flex items-center justify-center transition-colors focus:outline-none shadow-sm cursor-pointer"
+        className="w-3.5 h-3.5 rounded-full bg-[#FF5F56] border border-[#E0443E] hover:bg-[#E0443E] active:bg-[#BF4C47] flex items-center justify-center transition-all duration-150 focus:outline-none shadow-sm cursor-pointer"
         title="Close"
         aria-label="Close Window"
       >
         <X
-          size={7}
+          size={8}
           strokeWidth={3}
           className={`text-[#4C0000] opacity-0 ${isHovered ? 'opacity-100' : ''} transition-opacity duration-150`}
         />
@@ -57,12 +57,12 @@ export default function WindowControls({ className = '' }) {
       <button
         type="button"
         onClick={handleMinimize}
-        className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123] hover:bg-[#DEA123] active:bg-[#BF8E22] flex items-center justify-center transition-colors focus:outline-none shadow-sm cursor-pointer"
+        className="w-3.5 h-3.5 rounded-full bg-[#FFBD2E] border border-[#DEA123] hover:bg-[#DEA123] active:bg-[#BF8E22] flex items-center justify-center transition-all duration-150 focus:outline-none shadow-sm cursor-pointer"
         title="Minimize"
         aria-label="Minimize Window"
       >
         <Minus
-          size={7}
+          size={8}
           strokeWidth={3.5}
           className={`text-[#5C4000] opacity-0 ${isHovered ? 'opacity-100' : ''} transition-opacity duration-150`}
         />
@@ -72,12 +72,12 @@ export default function WindowControls({ className = '' }) {
       <button
         type="button"
         onClick={handleMaximize}
-        className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29] hover:bg-[#1AAB29] active:bg-[#1D9730] flex items-center justify-center transition-colors focus:outline-none shadow-sm cursor-pointer"
+        className="w-3.5 h-3.5 rounded-full bg-[#27C93F] border border-[#1AAB29] hover:bg-[#1AAB29] active:bg-[#1D9730] flex items-center justify-center transition-all duration-150 focus:outline-none shadow-sm cursor-pointer"
         title="Maximize / Fullscreen"
         aria-label="Maximize Window"
       >
         <Maximize2
-          size={6}
+          size={7}
           strokeWidth={3}
           className={`text-[#0A4D14] opacity-0 ${isHovered ? 'opacity-100' : ''} transition-opacity duration-150`}
         />
