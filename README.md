@@ -54,8 +54,14 @@ npm run dev
 # Run code quality & lint checks
 npm run lint
 
-# Build production bundle
+# Build production frontend bundle
 npm run build
+
+# Package desktop application into standalone Windows .exe (Installer & Portable)
+npm run dist
+
+# Or package strictly as a single standalone portable .exe
+npm run dist:portable
 ```
 
 ---
