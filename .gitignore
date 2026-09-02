@@ -18,6 +18,7 @@ jspm_packages/
 dist/
 dist-electron/
 out/
+release/
 
 # Editor / OS files
 .DS_Store
