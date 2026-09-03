@@ -104,3 +104,16 @@ WorkNest is structured so that the mock data layer and services can be seamlessl
                ↓
        [ SQL Server ]
 ```
+
+---
+
+## 📚 Documentation Index
+
+For in-depth guides and documentation, explore the `docs/` directory:
+
+- 🏛️ **[System Architecture](docs/ARCHITECTURE.md)**: Detailed component hierarchy, IPC flow, and data schema.
+- 📖 **[User Guide](docs/USER_GUIDE.md)**: Comprehensive manual for all 7 screens, Kanban board, and macOS traffic lights.
+- 🛠️ **[Developer Guide](docs/DEVELOPMENT.md)**: Environment setup, npm scripts reference, design tokens, and state conventions.
+- 🗺️ **[Project Roadmap](docs/ROADMAP.md)**: Multi-phase backend integration and NVIDIA AI API plan.
+- 🤝 **[Contributing Guidelines](docs/CONTRIBUTING.md)**: Git branching strategy, commit conventions, and verification steps.
+
