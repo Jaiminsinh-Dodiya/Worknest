@@ -6,7 +6,7 @@ This document describes the high-level architecture, design decisions, component
 
 ## 🏗️ System Overview
 
-WorkNest is architected as a modern, decoupled desktop client designed for eventual integration with an ASP.NET Core Web API and SQL Server backend.
+WorkNest is architected as a modern, decoupled desktop client designed for eventual integration with a Node.js REST API (Express / Fastify / NestJS) and database backend (PostgreSQL / SQL Server / MongoDB via Prisma).
 
 ```
 +-----------------------------------------------------------------------+
@@ -176,7 +176,7 @@ The AI module is decoupled via `src/services/aiService.js`:
                +--------------------+--------------------+
                │ (Current)                               │ (Future Phase)
                ▼                                         ▼
-   [ Mock Response Engine ]                   [ ASP.NET Core API ]
+   [ Mock Response Engine ]                     [ Node.js API ]
    - Latency simulation                                  │
    - Keyword prompt routing                              ▼
                                                  [ NVIDIA AI API ]

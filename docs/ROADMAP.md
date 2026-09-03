@@ -14,11 +14,11 @@ Phase 1: Frontend Desktop Prototype  [ ✅ COMPLETED ]
    ├── Centralized Global State & Mock Data Layer
    └── Standalone Windows .exe Packaging (NSIS & Portable)
 
-Phase 2: ASP.NET Core Backend API     [ 🔄 UPCOMING ]
-   ├── C# ASP.NET Core 8 Web API
+Phase 2: Node.js Backend API         [ 🔄 UPCOMING ]
+   ├── Node.js + Express / NestJS REST API (TypeScript)
    ├── JWT Authentication & Refresh Token Flow
-   ├── Entity Framework Core ORM
-   └── SQL Server Database Schema & Migrations
+   ├── Prisma ORM / PostgreSQL / MongoDB Data Layer
+   └── Database Schema Models & Automated Migrations
 
 Phase 3: Multi-Tenancy & RBAC Engine  [ ⏳ PLANNED ]
    ├── Tenant Isolation (Company Schema Partitioning)

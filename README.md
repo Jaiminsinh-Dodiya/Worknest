@@ -98,11 +98,13 @@ WorkNest is structured so that the mock data layer and services can be seamlessl
 ```
 [ Frontend: React + Electron ]
                ↓
-    [ ASP.NET Core Web API ]
+     [ Node.js REST API ]
+   (Express / Fastify / NestJS)
                ↓
-     [ Entity Framework ]
+    [ ORM / Database Layer ]
+     (Prisma / PostgreSQL / SQL)
                ↓
-       [ SQL Server ]
+       [ NVIDIA AI API ]
 ```
 
 ---
