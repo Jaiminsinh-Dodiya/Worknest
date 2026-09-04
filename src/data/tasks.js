@@ -14,7 +14,7 @@ export const mockTasks = [
   {
     id: 'task-2',
     title: 'Setup REST API',
-    description: 'Configure ASP.NET Core Web API with Entity Framework and SQL Server connection.',
+    description: 'Configure Node.js REST API with Prisma ORM and database connection.',
     projectId: 'proj-1',
     assigneeId: 'user-5',
     priority: 'High',

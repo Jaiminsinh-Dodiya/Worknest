@@ -6,7 +6,7 @@ import { mockResponses } from '../data/aiResponses';
  * Replace this implementation with NVIDIA API calls later.
  *
  * Future architecture:
- *   React -> aiService.generateResponse() -> ASP.NET Core API -> NVIDIA API
+ *   React -> aiService.generateResponse() -> Node.js REST API -> NVIDIA API
  */
 export async function generateResponse(prompt) {
   // Simulate API latency
