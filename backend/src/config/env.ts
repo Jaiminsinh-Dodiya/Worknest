@@ -13,4 +13,9 @@ export const env = {
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'worknest_jwt_refresh_dev_key_change_in_production',
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+
+  // NVIDIA AI Gateway
+  NVIDIA_API_KEY: process.env.NVIDIA_API_KEY || '',
+  NVIDIA_API_ENDPOINT: process.env.NVIDIA_API_ENDPOINT || 'https://integrate.api.nvidia.com/v1/chat/completions',
+  NVIDIA_AI_MODEL: process.env.NVIDIA_AI_MODEL || 'meta/llama-3.1-8b-instruct',
 };
