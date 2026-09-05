@@ -27,3 +27,39 @@ declare global {
     }
   }
 }
+
+// ─── AI Types ────────────────────────────────────────────────────────────────
+
+export interface AIMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+/** Company-level context injected by the backend into the system prompt */
+export interface AIContext {
+  companyName?: string;
+  userRole: string;
+  userDepartment?: string;
+  projectSummaries?: Array<{
+    name: string;
+    status: string;
+    progress: number;
+    dueDate: string | null;
+    taskCount: number;
+  }>;
+  teamSize?: number;
+}
+
+export interface AIRequest {
+  message: string;
+}
+
+export interface AIResponse {
+  reply: string;
+  model: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+}
