@@ -171,7 +171,20 @@ async function callNvidiaApi(systemPrompt: string, userMessage: string): Promise
   }
 
   if (!response.ok) {
-    throw new AppError(`AI service returned an error (HTTP ${response.status}). Please try again.`, 502);
+    let errorDetail = '';
+    try {
+      const errJson = (await response.json()) as any;
+      errorDetail = errJson.detail || errJson.message || errJson.title || '';
+    } catch {
+      // ignore parsing error
+    }
+    console.error(`[AI] NVIDIA API Error (HTTP ${response.status}):`, errorDetail);
+    throw new AppError(
+      errorDetail
+        ? `AI service error: ${errorDetail}`
+        : `AI service returned an error (HTTP ${response.status}). Please try again.`,
+      502
+    );
   }
 
   let body: NvidiaResponseBody;

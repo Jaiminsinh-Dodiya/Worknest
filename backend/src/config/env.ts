@@ -17,5 +17,5 @@ export const env = {
   // NVIDIA AI Gateway
   NVIDIA_API_KEY: process.env.NVIDIA_API_KEY || '',
   NVIDIA_API_ENDPOINT: process.env.NVIDIA_API_ENDPOINT || 'https://integrate.api.nvidia.com/v1/chat/completions',
-  NVIDIA_AI_MODEL: process.env.NVIDIA_AI_MODEL || 'meta/llama-3.1-8b-instruct',
+  NVIDIA_AI_MODEL: process.env.NVIDIA_AI_MODEL || 'meta/llama-3.2-11b-vision-instruct',
 };
