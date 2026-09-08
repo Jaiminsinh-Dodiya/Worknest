@@ -11,6 +11,7 @@ import userRoutes from './routes/user.routes.js';
 import companyRoutes from './routes/company.routes.js';
 import projectRoutes from './routes/project.routes.js';
 import taskRoutes from './routes/task.routes.js';
+import aiRoutes from './routes/ai.routes.js';
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/users', userRoutes);
 app.use('/api', companyRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 catch-all for unknown routes
 app.all('*', (req) => {
