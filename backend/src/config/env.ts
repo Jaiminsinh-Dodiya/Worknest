@@ -1,8 +1,19 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
-// Load .env from backend directory
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+// Load .env: support running from either repository root or backend folder
+const envCandidates = [
+  path.resolve(process.cwd(), 'backend/.env'),
+  path.resolve(process.cwd(), '.env'),
+];
+
+for (const envPath of envCandidates) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath, override: true });
+    break;
+  }
+}
 
 export const env = {
   PORT: parseInt(process.env.PORT || '3001', 10),
