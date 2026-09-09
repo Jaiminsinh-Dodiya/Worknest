@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Calendar, Users as UsersIcon } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useToast } from '../contexts/ToastContext';
+import { ROLES } from '../config/roles';
+import { hasPermission } from '../config/permissions';
 import PageHeader from '../components/ui/PageHeader';
 import SearchBar from '../components/ui/SearchBar';
 import Card from '../components/ui/Card';
@@ -15,7 +17,7 @@ import Input from '../components/ui/Input';
 import EmptyState from '../components/ui/EmptyState';
 
 export default function Projects() {
-  const { projects, allUsers, addProject, getUserById } = useApp();
+  const { getVisibleProjects, allUsers, addProject, getUserById, currentUser } = useApp();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -28,13 +30,16 @@ export default function Projects() {
     dueDate: '',
   });
 
+  const visibleProjects = getVisibleProjects();
+  const canManageProjects = hasPermission(currentUser?.role, 'projects.manage');
+
   const filteredProjects = useMemo(() => {
-    return projects.filter((project) => {
+    return visibleProjects.filter((project) => {
       const matchesSearch = project.name.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'All' || project.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [projects, search, statusFilter]);
+  }, [visibleProjects, search, statusFilter]);
 
   const handleAddProject = (e) => {
     e.preventDefault();
@@ -42,8 +47,8 @@ export default function Projects() {
     addProject({
       name: newProject.name,
       description: newProject.description,
-      managerId: newProject.managerId || 'user-1',
-      teamMemberIds: ['user-1'],
+      managerId: newProject.managerId || currentUser.id,
+      teamMemberIds: [currentUser.id],
       startDate: new Date().toISOString().split('T')[0],
       dueDate: newProject.dueDate || '2025-01-31',
     });
@@ -55,12 +60,18 @@ export default function Projects() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Projects"
-        subtitle="Manage and track your company's projects."
+        title={currentUser?.role === ROLES.EMPLOYEE ? 'My Projects' : 'Projects'}
+        subtitle={
+          currentUser?.role === ROLES.EMPLOYEE
+            ? 'Projects you are currently assigned to contribute towards.'
+            : "Manage and track your organization's projects."
+        }
         actions={
-          <Button icon={Plus} onClick={() => setShowAddModal(true)}>
-            New Project
-          </Button>
+          canManageProjects ? (
+            <Button icon={Plus} onClick={() => setShowAddModal(true)}>
+              New Project
+            </Button>
+          ) : null
         }
       />
 
@@ -88,9 +99,13 @@ export default function Projects() {
       {filteredProjects.length === 0 ? (
         <EmptyState
           title="No projects found"
-          description="Create your first project to get started."
-          actionLabel="+ Create Project"
-          onAction={() => setShowAddModal(true)}
+          description={
+            canManageProjects
+              ? 'Create your first project to get started.'
+              : 'You have not been assigned to any projects yet.'
+          }
+          actionLabel={canManageProjects ? '+ Create Project' : null}
+          onAction={canManageProjects ? () => setShowAddModal(true) : null}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -168,52 +183,54 @@ export default function Projects() {
       )}
 
       {/* Add Project Modal */}
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Create New Project">
-        <form onSubmit={handleAddProject} className="space-y-4">
-          <Input
-            label="Project Name"
-            value={newProject.name}
-            onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-            placeholder="Enter project name"
-            required
-          />
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Description</label>
-            <textarea
-              value={newProject.description}
-              onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
-              placeholder="Describe the project"
-              rows={3}
-              className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 resize-none"
+      {canManageProjects && (
+        <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Create New Project">
+          <form onSubmit={handleAddProject} className="space-y-4">
+            <Input
+              label="Project Name"
+              value={newProject.name}
+              onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+              placeholder="Enter project name"
+              required
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Project Manager</label>
-            <select
-              value={newProject.managerId}
-              onChange={(e) => setNewProject({ ...newProject, managerId: e.target.value })}
-              className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
-            >
-              <option value="">Select manager</option>
-              {allUsers
-                .filter((u) => u.role === 'Manager' || u.role === 'CompanyOwner')
-                .map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-            </select>
-          </div>
-          <Input
-            label="Due Date"
-            type="date"
-            value={newProject.dueDate}
-            onChange={(e) => setNewProject({ ...newProject, dueDate: e.target.value })}
-          />
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setShowAddModal(false)}>Cancel</Button>
-            <Button type="submit">Create Project</Button>
-          </div>
-        </form>
-      </Modal>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Description</label>
+              <textarea
+                value={newProject.description}
+                onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+                placeholder="Describe the project"
+                rows={3}
+                className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 resize-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Project Manager</label>
+              <select
+                value={newProject.managerId}
+                onChange={(e) => setNewProject({ ...newProject, managerId: e.target.value })}
+                className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+              >
+                <option value="">Select manager</option>
+                {allUsers
+                  .filter((u) => u.role === ROLES.MANAGER || u.role === ROLES.COMPANY_OWNER)
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                  ))}
+              </select>
+            </div>
+            <Input
+              label="Due Date"
+              type="date"
+              value={newProject.dueDate}
+              onChange={(e) => setNewProject({ ...newProject, dueDate: e.target.value })}
+            />
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="secondary" type="button" onClick={() => setShowAddModal(false)}>Cancel</Button>
+              <Button type="submit">Create Project</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }
