@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useToast } from '../contexts/ToastContext';
 import { Edit, Lock, Sun, Moon } from 'lucide-react';
+import { ROLE_LABELS } from '../config/roles';
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
 import Avatar from '../components/ui/Avatar';
@@ -9,13 +10,6 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
-
-const roleLabels = {
-  CompanyOwner: 'Company Owner',
-  HR: 'HR',
-  Manager: 'Manager',
-  Employee: 'Employee',
-};
 
 export default function Profile() {
   const { currentUser, company, updateUser } = useApp();
@@ -68,7 +62,7 @@ export default function Profile() {
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{currentUser.name}</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {roleLabels[currentUser.role] || currentUser.role} · {currentUser.department}
+              {ROLE_LABELS[currentUser.role] || currentUser.role} · {currentUser.department}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{company.name}</p>
             <div className="mt-2">
@@ -108,7 +102,7 @@ export default function Profile() {
           </div>
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Role</p>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{roleLabels[currentUser.role] || currentUser.role}</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{ROLE_LABELS[currentUser.role] || currentUser.role}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Joined</p>
