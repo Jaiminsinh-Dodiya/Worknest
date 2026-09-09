@@ -15,7 +15,6 @@ import {
   Building2,
   ClipboardList,
   CheckSquare,
-  UsersRound,
 } from 'lucide-react';
 import { ROLES } from './roles';
 

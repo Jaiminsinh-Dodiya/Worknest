@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { mockUsers } from '../data/users';
 import { mockProjects as defaultMockProjects } from '../data/projects';
 import { mockTasks as defaultMockTasks } from '../data/tasks';
