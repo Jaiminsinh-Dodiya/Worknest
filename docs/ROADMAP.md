@@ -1,51 +1,86 @@
 # WorkNest Project Roadmap & Backend Integration Plan
 
-This roadmap outlines the development phases for turning the **WorkNest** frontend prototype into a full-stack, enterprise-ready SaaS desktop platform.
+This roadmap outlines the development phases for turning the **WorkNest** frontend desktop application into a full-stack, enterprise-grade multi-tenant SaaS platform.
 
 ---
 
 ## 🗺️ Phases Overview
 
-```
-Phase 1: Frontend Desktop Prototype  [ ✅ COMPLETED ]
-   ├── Electron + Vite + React 18
-   ├── macOS-style Frameless TitleBar & Window Controls
-   ├── 7 Core Application Screens
-   ├── Centralized Global State & Mock Data Layer
+```text
+Phase 1: Desktop Shell & Core UI Prototype     [ ✅ COMPLETED ]
+   ├── Electron + Vite + React 18 Desktop Shell
+   ├── macOS Frameless Window Controls & TitleBar
+   ├── Core Application Screens & UI Component Library
    └── Standalone Windows .exe Packaging (NSIS & Portable)
 
-Phase 2: Node.js Backend API         [ 🔄 UPCOMING ]
-   ├── Node.js + Express / NestJS REST API (TypeScript)
-   ├── JWT Authentication & Refresh Token Flow
-   ├── Prisma ORM / PostgreSQL / MongoDB Data Layer
-   └── Database Schema Models & Automated Migrations
+Phase 2: Role-Based Frontend Architecture      [ ✅ COMPLETED ]
+   ├── 5 Canonical Roles (SUPER_ADMIN, COMPANY_OWNER, HR, MANAGER, EMPLOYEE)
+   ├── Mock Authentication & Session Persistence (localStorage)
+   ├── Route-Level Access Control (RoleRoute Protection)
+   ├── Centralized Permission Map & Capability Helpers
+   ├── 5 Role-Specific Dashboards via Shared Component Architecture
+   ├── Dynamic Role-Aware Sidebar Navigation
+   ├── Company-Scoped Multi-Tenant Data Layer
+   └── 1-Click Multi-Role Demo Switcher on Login
 
-Phase 3: Multi-Tenancy & RBAC Engine  [ ⏳ PLANNED ]
-   ├── Tenant Isolation (Company Schema Partitioning)
-   ├── Role-Based Access Control Middleware (Owner, HR, Manager, Employee)
-   └── Permission Guards on Project and Task Management
+Phase 3: Node.js Backend & Real Authentication [ 🔄 UPCOMING ]
+   ├── Node.js + Express / Fastify / NestJS REST API (TypeScript)
+   ├── JWT Authentication (Access Token + Refresh Token flow)
+   ├── Password Hashing (bcrypt / argon2)
+   ├── Backend RBAC Middleware mirroring ROLES & PERMISSIONS
+   └── Direct API swap of authService.login() -> POST /api/auth/login
 
-Phase 4: NVIDIA AI API Integration   [ ⏳ PLANNED ]
-   ├── Real AI integration via NVIDIA API / NIM
-   ├── Natural language project querying & automated status report generation
-   └── Smart task prioritization & workload balancing algorithms
+Phase 4: Database Modeling & Multi-Tenancy     [ ⏳ PLANNED ]
+   ├── Prisma ORM + PostgreSQL / MongoDB
+   ├── Multi-tenant company schema partitioning
+   ├── Database migrations & relational integrity
+   └── RESTful CRUD endpoints for Users, Projects, and Tasks
+
+Phase 5: Production AI Integration             [ ⏳ PLANNED ]
+   ├── Real AI integration via NVIDIA AI API / NIM
+   ├── Natural language project querying & status generation
+   └── Smart workload balancing & automated task prioritization
 ```
 
 ---
 
-## 📋 Phase 2 Milestone Checklist (Backend Architecture)
+## 📋 Phase 3 Milestone Checklist (Node.js Backend & Database)
 
-- [ ] **Database Design**:
-  - `Companies` Table (Tenant ID, Name, Plan, Tier)
-  - `Users` Table (Id, CompanyId, Email, PasswordHash, Role, Department, Status)
-  - `Projects` Table (Id, CompanyId, Name, ManagerId, Progress, Status, DueDate)
-  - `Tasks` Table (Id, ProjectId, AssigneeId, Title, Priority, Status, DueDate)
-- [ ] **API Endpoints**:
-  - `POST /api/auth/login` & `POST /api/auth/refresh`
-  - `GET/POST/PUT /api/users`
-  - `GET/POST/PUT /api/projects`
-  - `GET/POST/PUT/DELETE /api/tasks`
-  - `POST /api/ai/chat` (proxying to NVIDIA API)
-- [ ] **Frontend API Integration**:
-  - Replace mock services with Axios/Fetch HTTP client.
-  - Implement token storage and auto-refresh interceptors.
+### 1. Database Schema Design (Prisma + PostgreSQL)
+- **`Companies` Model**:
+  - `id` (UUID), `name`, `industry`, `size`, `plan` (`Starter` | `Professional` | `Enterprise`), `status`, `createdAt`
+- **`Users` Model**:
+  - `id` (UUID), `companyId` (nullable for `SUPER_ADMIN`), `name`, `email`, `passwordHash`, `role` (`SUPER_ADMIN` | `COMPANY_OWNER` | `HR` | `MANAGER` | `EMPLOYEE`), `department`, `status`, `avatar`, `joinedAt`
+- **`Projects` Model**:
+  - `id` (UUID), `companyId`, `name`, `description`, `managerId`, `progress`, `status` (`Active` | `Completed` | `On Hold`), `startDate`, `dueDate`, `createdAt`
+- **`Tasks` Model**:
+  - `id` (UUID), `projectId`, `assigneeId`, `title`, `description`, `priority` (`High` | `Medium` | `Low`), `status` (`Todo` | `In Progress` | `Completed`), `dueDate`, `createdAt`
+
+### 2. REST API Endpoints
+- **Authentication**:
+  - `POST /api/auth/login` (returns JWT + sanitized user object)
+  - `POST /api/auth/refresh`
+  - `POST /api/auth/logout`
+  - `GET /api/auth/me`
+- **Company & Tenant Management**:
+  - `GET/POST /api/admin/companies` (restricted to `SUPER_ADMIN`)
+  - `GET /api/companies/:id`
+- **Users**:
+  - `GET /api/users` (company-scoped or platform-wide for `SUPER_ADMIN`)
+  - `POST /api/users` (restricted to `users.manage`)
+  - `PATCH /api/users/:id`
+  - `PATCH /api/users/:id/status`
+- **Projects & Tasks**:
+  - `GET/POST /api/projects`
+  - `GET/PATCH /api/projects/:id`
+  - `GET/POST /api/tasks`
+  - `PATCH /api/tasks/:id` (assignee-only check for `EMPLOYEE`)
+  - `DELETE /api/tasks/:id`
+- **AI Service Proxy**:
+  - `POST /api/ai/chat` (proxy to NVIDIA AI endpoint)
+
+### 3. Frontend Zero-Refactor Transition Plan
+Because the frontend architecture has been decoupled:
+1. Replace `authService.login()` body with `POST /api/auth/login` call.
+2. Replace `AppContext` in-memory state with API fetch calls (`react-query` or `axios`).
+3. Retain all existing role configurations, route guards, dashboard widgets, and UI components untouched.
