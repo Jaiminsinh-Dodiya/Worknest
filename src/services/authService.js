@@ -86,4 +86,20 @@ export const authService = {
     delete sessionUser.password;
     localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
   },
+
+  /**
+   * Fetch active demo accounts from the live backend API for development.
+   * @returns {Promise<Array>}
+   */
+  async getDemoAccounts() {
+    try {
+      const response = await api.get('/auth/demo-accounts');
+      if (response && response.success && Array.isArray(response.data)) {
+        return response.data;
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  },
 };
