@@ -49,4 +49,16 @@ export class AuthController {
       next(error);
     }
   }
+
+  static async demoAccounts(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const accounts = await AuthService.getDemoAccounts();
+      res.status(200).json({
+        success: true,
+        data: accounts,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
