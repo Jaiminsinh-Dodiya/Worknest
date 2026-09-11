@@ -79,7 +79,13 @@ export default function Sidebar() {
             {roleNav.items.map((item) => {
               const Icon = item.icon;
               return (
-                <NavLink key={item.to} to={item.to} className={navLinkClass} title={collapsed ? item.label : ''}>
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={Boolean(item.end || item.to === '/admin' || item.to === '/dashboard' || item.to === '/hr' || item.to === '/manager' || item.to === '/employee')}
+                  className={navLinkClass}
+                  title={collapsed ? item.label : ''}
+                >
                   <Icon size={18} className="flex-shrink-0" />
                   {!collapsed && <span className="truncate">{item.label}</span>}
                 </NavLink>
@@ -96,15 +102,15 @@ export default function Sidebar() {
             </p>
           )}
           <div className="space-y-0.5">
-            {accountNav.map((item, i) => {
+            {accountNav.map((item) => {
               const Icon = item.icon;
               return (
                 <NavLink
                   key={item.label}
                   to={item.to}
+                  end={item.end ?? true}
                   className={navLinkClass}
                   title={collapsed ? item.label : ''}
-                  end={i === 0}
                 >
                   <Icon size={18} className="flex-shrink-0" />
                   {!collapsed && <span className="truncate">{item.label}</span>}

@@ -131,6 +131,7 @@ export default function App() {
         {/* Shared Pages */}
         <Route path="/ai" element={<AIAssistant />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/settings" element={<Profile />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/login" replace />} />

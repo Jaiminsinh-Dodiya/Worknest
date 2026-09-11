@@ -22,7 +22,7 @@ export const navigationByRole = {
   [ROLES.SUPER_ADMIN]: {
     sectionLabel: 'WORKNEST',
     items: [
-      { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
       { to: '/admin/companies', label: 'Companies', icon: Building2 },
       { to: '/admin/users', label: 'Platform Users', icon: Users },
     ],
@@ -30,7 +30,7 @@ export const navigationByRole = {
   [ROLES.COMPANY_OWNER]: {
     sectionLabel: 'COMPANY',
     items: [
-      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
       { to: '/users', label: 'Users', icon: Users },
       { to: '/projects', label: 'Projects', icon: FolderKanban },
       { to: '/tasks', label: 'Tasks', icon: ClipboardList },
@@ -40,7 +40,7 @@ export const navigationByRole = {
   [ROLES.HR]: {
     sectionLabel: 'HR',
     items: [
-      { to: '/hr', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/hr', label: 'Dashboard', icon: LayoutDashboard, end: true },
       { to: '/users', label: 'Users', icon: Users },
       { to: '/ai', label: 'AI Assistant', icon: Bot },
     ],
@@ -48,7 +48,7 @@ export const navigationByRole = {
   [ROLES.MANAGER]: {
     sectionLabel: 'WORKSPACE',
     items: [
-      { to: '/manager', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/manager', label: 'Dashboard', icon: LayoutDashboard, end: true },
       { to: '/projects', label: 'Projects', icon: FolderKanban },
       { to: '/my-tasks', label: 'My Tasks', icon: CheckSquare },
       { to: '/tasks', label: 'Team Tasks', icon: ClipboardList },
@@ -58,7 +58,7 @@ export const navigationByRole = {
   [ROLES.EMPLOYEE]: {
     sectionLabel: 'MY WORKSPACE',
     items: [
-      { to: '/employee', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/employee', label: 'Dashboard', icon: LayoutDashboard, end: true },
       { to: '/my-tasks', label: 'My Tasks', icon: CheckSquare },
       { to: '/projects', label: 'My Projects', icon: FolderKanban },
       { to: '/ai', label: 'AI Assistant', icon: Bot },
@@ -68,6 +68,6 @@ export const navigationByRole = {
 
 /** Account section nav — shared across all roles */
 export const accountNav = [
-  { to: '/profile', label: 'Profile', icon: UserCircle },
-  { to: '/profile', label: 'Settings', icon: Settings },
+  { to: '/profile', label: 'Profile', icon: UserCircle, end: true },
+  { to: '/settings', label: 'Settings', icon: Settings, end: true },
 ];
