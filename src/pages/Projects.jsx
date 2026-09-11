@@ -17,20 +17,16 @@ import Input from '../components/ui/Input';
 import EmptyState from '../components/ui/EmptyState';
 
 export default function Projects() {
-  const { getVisibleProjects, allUsers, addProject, updateProject, getUserById, currentUser } = useApp();
+  const { getVisibleProjects, allUsers, addProject, getUserById, currentUser } = useApp();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
-
-  const handleProjectStatusChange = (projectId, newStatus) => {
-    updateProject(projectId, { status: newStatus });
-    addToast(`Project status updated to ${newStatus}.`, 'success');
-  };
   const [newProject, setNewProject] = useState({
     name: '',
     description: '',
+    department: 'Development',
     managerId: '',
     dueDate: '',
   });
@@ -52,6 +48,7 @@ export default function Projects() {
     addProject({
       name: newProject.name,
       description: newProject.description,
+      department: newProject.department || 'Development',
       managerId: newProject.managerId || currentUser.id,
       teamMemberIds: [currentUser.id],
       startDate: new Date().toISOString().split('T')[0],
@@ -59,7 +56,7 @@ export default function Projects() {
     });
     addToast('Project created successfully.', 'success');
     setShowAddModal(false);
-    setNewProject({ name: '', description: '', managerId: '', dueDate: '' });
+    setNewProject({ name: '', description: '', department: 'Development', managerId: '', dueDate: '' });
   };
 
   return (
@@ -130,23 +127,14 @@ export default function Projects() {
                   <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                     {project.name}
                   </h3>
-                  {canManageProjects ? (
-                    <select
-                      value={project.status}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        handleProjectStatusChange(project.id, e.target.value);
-                      }}
-                      className="px-2 py-0.5 text-xs font-semibold rounded-full border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 cursor-pointer hover:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors shadow-sm"
-                    >
-                      <option value="Active">🟢 Active</option>
-                      <option value="On Hold">🟠 On Hold</option>
-                      <option value="Completed">🔵 Completed</option>
-                    </select>
-                  ) : (
+                  <div className="flex items-center gap-1.5">
+                    {project.department && (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">
+                        {project.department}
+                      </span>
+                    )}
                     <Badge>{project.status}</Badge>
-                  )}
+                  </div>
                 </div>
 
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">
@@ -223,6 +211,20 @@ export default function Projects() {
                 rows={3}
                 className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 resize-none"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Department</label>
+              <select
+                value={newProject.department}
+                onChange={(e) => setNewProject({ ...newProject, department: e.target.value })}
+                className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+              >
+                <option value="Development">Development</option>
+                <option value="Design">Design</option>
+                <option value="Quality Assurance">Quality Assurance</option>
+                <option value="Human Resources">Human Resources</option>
+                <option value="Management">Management</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Project Manager</label>
