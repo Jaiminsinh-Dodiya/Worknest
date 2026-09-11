@@ -17,12 +17,17 @@ import Input from '../components/ui/Input';
 import EmptyState from '../components/ui/EmptyState';
 
 export default function Projects() {
-  const { getVisibleProjects, allUsers, addProject, getUserById, currentUser } = useApp();
+  const { getVisibleProjects, allUsers, addProject, updateProject, getUserById, currentUser } = useApp();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+
+  const handleProjectStatusChange = (projectId, newStatus) => {
+    updateProject(projectId, { status: newStatus });
+    addToast(`Project status updated to ${newStatus}.`, 'success');
+  };
   const [newProject, setNewProject] = useState({
     name: '',
     description: '',
@@ -125,7 +130,23 @@ export default function Projects() {
                   <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                     {project.name}
                   </h3>
-                  <Badge>{project.status}</Badge>
+                  {canManageProjects ? (
+                    <select
+                      value={project.status}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleProjectStatusChange(project.id, e.target.value);
+                      }}
+                      className="px-2 py-0.5 text-xs font-semibold rounded-full border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 cursor-pointer hover:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors shadow-sm"
+                    >
+                      <option value="Active">🟢 Active</option>
+                      <option value="On Hold">🟠 On Hold</option>
+                      <option value="Completed">🔵 Completed</option>
+                    </select>
+                  ) : (
+                    <Badge>{project.status}</Badge>
+                  )}
                 </div>
 
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">
