@@ -154,8 +154,24 @@ export function AppProvider({ children }) {
     if (currentUser.role === ROLES.EMPLOYEE) {
       return companyTasks.filter((t) => t.assigneeId === currentUser.id);
     }
+
+    if (currentUser.role === ROLES.MANAGER) {
+      return companyTasks.filter((t) => {
+        // Manager's own tasks
+        if (t.assigneeId === currentUser.id) return true;
+        // Unassigned tasks in a project managed by this manager
+        if (!t.assigneeId) {
+          const project = projects.find((p) => p.id === t.projectId);
+          return project?.managerId === currentUser.id;
+        }
+        // Tasks assigned to members of the manager's department
+        const assignee = users.find((u) => u.id === t.assigneeId);
+        return assignee?.department === currentUser.department;
+      });
+    }
+
     return companyTasks;
-  }, [currentUser, tasks, getVisibleProjects]);
+  }, [currentUser, tasks, users, projects, getVisibleProjects]);
 
   /** Get tasks assigned to current user (My Tasks) */
   const getMyTasks = useCallback(() => {
