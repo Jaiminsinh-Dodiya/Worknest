@@ -36,6 +36,29 @@ const mapTaskForClient = (task: any) => {
   };
 };
 
+async function syncProjectProgress(projectId: string) {
+  try {
+    const tasks = await prisma.task.findMany({
+      where: { projectId },
+      select: { status: true },
+    });
+    const progress =
+      tasks.length > 0
+        ? Math.round(
+            (tasks.filter((t) => t.status === TaskStatus.Completed).length /
+              tasks.length) *
+              100
+          )
+        : 0;
+    await prisma.project.update({
+      where: { id: projectId },
+      data: { progress },
+    });
+  } catch (err) {
+    console.warn(`Failed to sync project progress for ${projectId}:`, err);
+  }
+}
+
 export class TaskService {
   /**
    * Get tasks scoped by user role and company
@@ -171,6 +194,8 @@ export class TaskService {
       },
     });
 
+    await syncProjectProgress(task.projectId);
+
     return mapTaskForClient(task);
   }
 
@@ -210,6 +235,8 @@ export class TaskService {
         },
       });
 
+      await syncProjectProgress(updated.projectId);
+
       return mapTaskForClient(updated);
     }
 
@@ -229,6 +256,8 @@ export class TaskService {
         project: { select: { id: true, name: true } },
       },
     });
+
+    await syncProjectProgress(updated.projectId);
 
     return mapTaskForClient(updated);
   }
@@ -253,6 +282,8 @@ export class TaskService {
     await prisma.task.delete({
       where: { id: taskId },
     });
+
+    await syncProjectProgress(existing.projectId);
 
     return { success: true, message: 'Task deleted successfully' };
   }
