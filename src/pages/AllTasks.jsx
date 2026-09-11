@@ -33,6 +33,7 @@ export default function AllTasks() {
     getVisibleProjects,
     getUserById,
     updateTask,
+    allUsers,
   } = useApp();
   const { addToast } = useToast();
 
@@ -41,6 +42,7 @@ export default function AllTasks() {
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [projectFilter, setProjectFilter] = useState('All');
   const [assigneeFilter, setAssigneeFilter] = useState('All');
+  const [departmentFilter, setDepartmentFilter] = useState('All');
 
   const visibleTasks = getVisibleTasks();
   const visibleProjects = getVisibleProjects();
@@ -52,6 +54,12 @@ export default function AllTasks() {
     return ids.map((id) => getUserById(id)).filter(Boolean);
   }, [visibleTasks, getUserById]);
 
+  // Available departments list
+  const availableDepartments = useMemo(() => {
+    const depts = new Set(allUsers.map((u) => u.department).filter(Boolean));
+    return ['All', ...Array.from(depts)];
+  }, [allUsers]);
+
   // Filter tasks
   const filteredTasks = useMemo(() => {
     return visibleTasks.filter((task) => {
@@ -62,9 +70,28 @@ export default function AllTasks() {
       const matchesPriority = priorityFilter === 'All' || task.priority === priorityFilter;
       const matchesProject = projectFilter === 'All' || task.projectId === projectFilter;
       const matchesAssignee = assigneeFilter === 'All' || task.assigneeId === assigneeFilter;
-      return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesAssignee;
+      const assignee = getUserById(task.assigneeId);
+      const matchesDepartment =
+        departmentFilter === 'All' || (assignee && assignee.department === departmentFilter);
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesPriority &&
+        matchesProject &&
+        matchesAssignee &&
+        matchesDepartment
+      );
     });
-  }, [visibleTasks, search, statusFilter, priorityFilter, projectFilter, assigneeFilter]);
+  }, [
+    visibleTasks,
+    search,
+    statusFilter,
+    priorityFilter,
+    projectFilter,
+    assigneeFilter,
+    departmentFilter,
+    getUserById,
+  ]);
 
   // Stats
   const totalTasks = visibleTasks.length;
@@ -196,6 +223,28 @@ export default function AllTasks() {
             </option>
           ))}
         </select>
+        {/* Department Filter / Manager Indicator */}
+        {currentUser?.role === ROLES.MANAGER ? (
+          <div className="flex items-center gap-1.5 px-3 py-2 text-sm bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-lg border border-primary-200 dark:border-primary-800">
+            <span className="text-gray-500 dark:text-gray-400 text-xs">Division:</span>
+            <span className="font-semibold text-xs">{currentUser.department}</span>
+          </div>
+        ) : (
+          <select
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            className="px-3 py-2 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+          >
+            <option value="All">All Departments</option>
+            {availableDepartments
+              .filter((d) => d !== 'All')
+              .map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+          </select>
+        )}
       </div>
 
       {/* ── Tasks Table ── */}
