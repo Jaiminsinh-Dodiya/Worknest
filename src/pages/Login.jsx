@@ -24,7 +24,7 @@ export default function Login() {
     // Simulate small network delay
     await new Promise((resolve) => setTimeout(resolve, 400));
 
-    const result = login(email, password);
+    const result = await login(email, password);
 
     if (result.success) {
       const destination = getDashboardPath(result.user.role);

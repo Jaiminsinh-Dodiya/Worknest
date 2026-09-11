@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { mockUsers } from '../data/users';
 import { mockProjects as defaultMockProjects } from '../data/projects';
 import { mockTasks as defaultMockTasks } from '../data/tasks';
-import { mockCompanies, getCompanyById } from '../data/companies';
+import { mockCompanies as defaultMockCompanies, getCompanyById } from '../data/companies';
 import { authService } from '../services/authService';
+import { api } from '../services/api';
 import { ROLES } from '../config/roles';
 
 const AppContext = createContext(null);
@@ -13,10 +14,11 @@ export function AppProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(() => authService.getCurrentUser());
   const [isAuthenticated, setIsAuthenticated] = useState(() => authService.isAuthenticated());
 
-  // ── Data State ──
+  // ── Data State (Loaded from API with fallback to mock data) ──
   const [users, setUsers] = useState(mockUsers);
   const [projects, setProjects] = useState(defaultMockProjects);
   const [tasks, setTasks] = useState(defaultMockTasks);
+  const [companies, setCompanies] = useState(defaultMockCompanies);
 
   // ── Derived State ──
   const userRole = currentUser?.role || null;
@@ -24,12 +26,70 @@ export function AppProvider({ children }) {
 
   const company = useMemo(() => {
     if (!companyId) return { id: null, name: 'WorkNest Platform' };
+    const found = companies.find((c) => c.id === companyId);
+    if (found) return found;
     return getCompanyById(companyId) || { id: companyId, name: 'Unknown Company' };
-  }, [companyId]);
+  }, [companyId, companies]);
+
+  // ── Sync with Live PostgreSQL Backend on Authentication ──
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let isMounted = true;
+
+    async function fetchLiveBackendData() {
+      try {
+        const isOnline = await api.isOnline();
+        if (!isOnline) return;
+
+        // Parallel queries to live REST API
+        const promises = [
+          api.get('/users').catch(() => null),
+          api.get('/projects').catch(() => null),
+          api.get('/tasks').catch(() => null),
+        ];
+
+        if (currentUser?.role === ROLES.SUPER_ADMIN) {
+          promises.push(api.get('/admin/companies').catch(() => null));
+        }
+
+        const [usersRes, projectsRes, tasksRes, companiesRes] = await Promise.all(promises);
+
+        if (!isMounted) return;
+
+        if (usersRes?.data && Array.isArray(usersRes.data)) {
+          // Include current user in allUsers list
+          const fetchedUsers = currentUser
+            ? [currentUser, ...usersRes.data.filter((u) => u.id !== currentUser.id)]
+            : usersRes.data;
+          setUsers(fetchedUsers);
+        }
+
+        if (projectsRes?.data && Array.isArray(projectsRes.data)) {
+          setProjects(projectsRes.data);
+        }
+
+        if (tasksRes?.data && Array.isArray(tasksRes.data)) {
+          setTasks(tasksRes.data);
+        }
+
+        if (companiesRes?.data && Array.isArray(companiesRes.data)) {
+          setCompanies(companiesRes.data);
+        }
+      } catch (err) {
+        console.warn('Could not sync with live backend API:', err);
+      }
+    }
+
+    fetchLiveBackendData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, currentUser]);
 
   // ── Auth Actions ──
-  const login = useCallback((email, password) => {
-    const result = authService.login(email, password);
+  const login = useCallback(async (email, password) => {
+    const result = await authService.login(email, password);
     if (result.success) {
       setCurrentUser(result.user);
       setIsAuthenticated(true);
@@ -68,12 +128,16 @@ export function AppProvider({ children }) {
     const companyProjects = projects.filter((p) => p.companyId === currentUser.companyId);
 
     if (currentUser.role === ROLES.EMPLOYEE) {
-      return companyProjects.filter((p) => p.teamMemberIds.includes(currentUser.id));
+      return companyProjects.filter((p) => {
+        const members = p.teamMemberIds || (p.teamMembers ? p.teamMembers.map((m) => m.id) : []);
+        return members.includes(currentUser.id);
+      });
     }
     if (currentUser.role === ROLES.MANAGER) {
-      return companyProjects.filter(
-        (p) => p.managerId === currentUser.id || p.teamMemberIds.includes(currentUser.id)
-      );
+      return companyProjects.filter((p) => {
+        const members = p.teamMemberIds || (p.teamMembers ? p.teamMembers.map((m) => m.id) : []);
+        return p.managerId === currentUser.id || members.includes(currentUser.id);
+      });
     }
     return companyProjects;
   }, [currentUser, projects]);
@@ -99,8 +163,23 @@ export function AppProvider({ children }) {
     return tasks.filter((t) => t.assigneeId === currentUser.id);
   }, [currentUser, tasks]);
 
-  // ── User CRUD ──
-  const addUser = useCallback((user) => {
+  // ── User CRUD (Saves directly to PostgreSQL) ──
+  const addUser = useCallback(async (user) => {
+    try {
+      const res = await api.post('/users', {
+        ...user,
+        companyId: companyId || user.companyId,
+      });
+
+      if (res?.data) {
+        setUsers((prev) => [res.data, ...prev]);
+        return res.data;
+      }
+    } catch (err) {
+      console.warn('API addUser failed, using local state:', err);
+    }
+
+    // Local fallback
     const newUser = {
       ...user,
       id: `user-${Date.now()}`,
@@ -109,11 +188,17 @@ export function AppProvider({ children }) {
       avatar: null,
       joinedAt: new Date().toISOString().split('T')[0],
     };
-    setUsers((prev) => [...prev, newUser]);
+    setUsers((prev) => [newUser, ...prev]);
     return newUser;
   }, [companyId]);
 
-  const updateUser = useCallback((id, updates) => {
+  const updateUser = useCallback(async (id, updates) => {
+    try {
+      await api.patch(`/users/${id}`, updates);
+    } catch (err) {
+      console.warn('API updateUser failed, using local state:', err);
+    }
+
     if (currentUser && id === currentUser.id) {
       const updatedUser = { ...currentUser, ...updates };
       setCurrentUser(updatedUser);
@@ -124,14 +209,40 @@ export function AppProvider({ children }) {
     );
   }, [currentUser]);
 
-  const deactivateUser = useCallback((id) => {
+  const deactivateUser = useCallback(async (id) => {
+    try {
+      const res = await api.patch(`/users/${id}/status`);
+      if (res?.data) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === id ? { ...u, status: res.data.status } : u))
+        );
+        return;
+      }
+    } catch (err) {
+      console.warn('API deactivateUser failed, using local state:', err);
+    }
+
     setUsers((prev) =>
       prev.map((u) => (u.id === id ? { ...u, status: u.status === 'Active' ? 'Inactive' : 'Active' } : u))
     );
   }, []);
 
-  // ── Project CRUD ──
-  const addProject = useCallback((project) => {
+  // ── Project CRUD (Saves directly to PostgreSQL) ──
+  const addProject = useCallback(async (project) => {
+    try {
+      const res = await api.post('/projects', {
+        ...project,
+        companyId: companyId || project.companyId,
+      });
+
+      if (res?.data) {
+        setProjects((prev) => [res.data, ...prev]);
+        return res.data;
+      }
+    } catch (err) {
+      console.warn('API addProject failed, using local state:', err);
+    }
+
     const newProject = {
       ...project,
       id: `proj-${Date.now()}`,
@@ -140,34 +251,62 @@ export function AppProvider({ children }) {
       status: 'Active',
       createdAt: new Date().toISOString().split('T')[0],
     };
-    setProjects((prev) => [...prev, newProject]);
+    setProjects((prev) => [newProject, ...prev]);
     return newProject;
   }, [companyId]);
 
-  const updateProject = useCallback((id, updates) => {
+  const updateProject = useCallback(async (id, updates) => {
+    try {
+      await api.patch(`/projects/${id}`, updates);
+    } catch (err) {
+      console.warn('API updateProject failed, using local state:', err);
+    }
+
     setProjects((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
     );
   }, []);
 
-  // ── Task CRUD ──
-  const addTask = useCallback((task) => {
+  // ── Task CRUD (Saves directly to PostgreSQL) ──
+  const addTask = useCallback(async (task) => {
+    try {
+      const res = await api.post('/tasks', task);
+      if (res?.data) {
+        setTasks((prev) => [res.data, ...prev]);
+        return res.data;
+      }
+    } catch (err) {
+      console.warn('API addTask failed, using local state:', err);
+    }
+
     const newTask = {
       ...task,
       id: `task-${Date.now()}`,
       createdAt: new Date().toISOString().split('T')[0],
     };
-    setTasks((prev) => [...prev, newTask]);
+    setTasks((prev) => [newTask, ...prev]);
     return newTask;
   }, []);
 
-  const updateTask = useCallback((id, updates) => {
+  const updateTask = useCallback(async (id, updates) => {
+    try {
+      await api.patch(`/tasks/${id}`, updates);
+    } catch (err) {
+      console.warn('API updateTask failed, using local state:', err);
+    }
+
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
     );
   }, []);
 
-  const deleteTask = useCallback((id) => {
+  const deleteTask = useCallback(async (id) => {
+    try {
+      await api.delete(`/tasks/${id}`);
+    } catch (err) {
+      console.warn('API deleteTask failed, using local state:', err);
+    }
+
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
@@ -197,7 +336,7 @@ export function AppProvider({ children }) {
     logout,
     // Company
     company,
-    companies: mockCompanies,
+    companies,
     // Data (scoped)
     users,
     allUsers,
