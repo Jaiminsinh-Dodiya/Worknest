@@ -1,142 +1,375 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { currentUser as defaultCurrentUser, mockUsers as defaultMockUsers } from '../data/users';
-import { mockProjects as defaultMockProjects } from '../data/projects';
-import { mockTasks as defaultMockTasks } from '../data/tasks';
-import { currentCompany } from '../data/companies';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { authService } from '../services/authService';
+import { api } from '../services/api';
+import { ROLES } from '../config/roles';
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(defaultCurrentUser);
-  const [users, setUsers] = useState(defaultMockUsers);
-  const [projects, setProjects] = useState(defaultMockProjects);
-  const [tasks, setTasks] = useState(defaultMockTasks);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // ── Authentication State ──
+  const [currentUser, setCurrentUser] = useState(() => authService.getCurrentUser());
+  const [isAuthenticated, setIsAuthenticated] = useState(() => authService.isAuthenticated());
 
-  const company = currentCompany;
+  // ── Data State (Loaded strictly from live PostgreSQL Backend) ──
+  const [users, setUsers] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [companies, setCompanies] = useState([]);
 
-  // Get all users including current user
-  const allUsers = useMemo(() => [currentUser, ...users], [currentUser, users]);
+  // ── Derived State ──
+  const userRole = currentUser?.role || null;
+  const companyId = currentUser?.companyId || null;
 
-  // User actions
-  const addUser = useCallback((user) => {
-    const newUser = {
-      ...user,
-      id: `user-${Date.now()}`,
-      status: 'Active',
-      avatar: null,
-      joinedAt: new Date().toISOString().split('T')[0],
-    };
-    setUsers((prev) => [...prev, newUser]);
-    return newUser;
-  }, []);
+  const company = useMemo(() => {
+    if (!companyId) return { id: null, name: 'WorkNest Platform' };
+    const found = companies.find((c) => c.id === companyId);
+    if (found) return found;
+    if (currentUser?.company) return currentUser.company;
+    return { id: companyId, name: 'WorkNest Technologies' };
+  }, [companyId, companies, currentUser]);
 
-  const updateUser = useCallback((id, updates) => {
-    if (id === currentUser.id) {
-      setCurrentUser((prev) => ({ ...prev, ...updates }));
-    } else {
-      setUsers((prev) =>
-        prev.map((u) => (u.id === id ? { ...u, ...updates } : u))
-      );
+  // ── Sync with Live PostgreSQL Backend on Authentication ──
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let isMounted = true;
+
+    async function fetchLiveBackendData() {
+      try {
+        const isOnline = await api.isOnline();
+        if (!isOnline) return;
+
+        // Parallel queries to live REST API
+        const promises = [
+          api.get('/users').catch(() => null),
+          api.get('/projects').catch(() => null),
+          api.get('/tasks').catch(() => null),
+        ];
+
+        if (currentUser?.role === ROLES.SUPER_ADMIN) {
+          promises.push(api.get('/admin/companies').catch(() => null));
+        }
+
+        const [usersRes, projectsRes, tasksRes, companiesRes] = await Promise.all(promises);
+
+        if (!isMounted) return;
+
+        if (usersRes?.data && Array.isArray(usersRes.data)) {
+          // Include current user in allUsers list
+          const fetchedUsers = currentUser
+            ? [currentUser, ...usersRes.data.filter((u) => u.id !== currentUser.id)]
+            : usersRes.data;
+          setUsers(fetchedUsers);
+        }
+
+        if (projectsRes?.data && Array.isArray(projectsRes.data) && tasksRes?.data && Array.isArray(tasksRes.data)) {
+          const liveTasks = tasksRes.data;
+          const liveProjects = projectsRes.data.map((p) => {
+            const pTasks = liveTasks.filter((t) => t.projectId === p.id);
+            if (pTasks.length === 0) return { ...p, progress: 0 };
+            const completed = pTasks.filter((t) => t.status === 'Completed').length;
+            return { ...p, progress: Math.round((completed / pTasks.length) * 100) };
+          });
+          setProjects(liveProjects);
+          setTasks(liveTasks);
+        } else {
+          if (projectsRes?.data && Array.isArray(projectsRes.data)) {
+            setProjects(projectsRes.data);
+          }
+          if (tasksRes?.data && Array.isArray(tasksRes.data)) {
+            setTasks(tasksRes.data);
+          }
+        }
+
+        if (companiesRes?.data && Array.isArray(companiesRes.data)) {
+          setCompanies(companiesRes.data);
+        }
+      } catch (err) {
+        console.warn('Could not sync with live backend API:', err);
+      }
     }
-  }, [currentUser.id]);
 
-  const deactivateUser = useCallback((id) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, status: u.status === 'Active' ? 'Inactive' : 'Active' } : u))
-    );
-  }, []);
+    fetchLiveBackendData();
 
-  // Project actions
-  const addProject = useCallback((project) => {
-    const newProject = {
-      ...project,
-      id: `proj-${Date.now()}`,
-      progress: 0,
-      status: 'Active',
-      createdAt: new Date().toISOString().split('T')[0],
+    return () => {
+      isMounted = false;
     };
-    setProjects((prev) => [...prev, newProject]);
-    return newProject;
-  }, []);
+  }, [isAuthenticated, currentUser]);
 
-  const updateProject = useCallback((id, updates) => {
-    setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
-    );
-  }, []);
-
-  // Task actions
-  const addTask = useCallback((task) => {
-    const newTask = {
-      ...task,
-      id: `task-${Date.now()}`,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    setTasks((prev) => [...prev, newTask]);
-    return newTask;
-  }, []);
-
-  const updateTask = useCallback((id, updates) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
-    );
-  }, []);
-
-  const deleteTask = useCallback((id) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-  }, []);
-
-  // Auth actions
-  const login = useCallback(() => {
-    setIsAuthenticated(true);
+  // ── Auth Actions ──
+  const login = useCallback(async (email, password) => {
+    const result = await authService.login(email, password);
+    if (result.success) {
+      setCurrentUser(result.user);
+      setIsAuthenticated(true);
+    }
+    return result;
   }, []);
 
   const logout = useCallback(() => {
+    authService.logout();
+    setCurrentUser(null);
     setIsAuthenticated(false);
+    setUsers([]);
+    setProjects([]);
+    setTasks([]);
+    setCompanies([]);
   }, []);
 
-  // Helper: get user by ID
+  // ── Company-Scoped Data Helpers ──
+
+  /** Get users visible to the current user based on role/company */
+  const getVisibleUsers = useCallback(() => {
+    if (!currentUser) return [];
+    if (currentUser.role === ROLES.SUPER_ADMIN) {
+      return users.filter((u) => u.id !== currentUser.id);
+    }
+    return users.filter((u) => u.companyId === currentUser.companyId && u.id !== currentUser.id);
+  }, [currentUser, users]);
+
+  /** All users including current user, scoped by role */
+  const allUsers = useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.role === ROLES.SUPER_ADMIN) return users;
+    return users.filter((u) => u.companyId === currentUser.companyId);
+  }, [currentUser, users]);
+
+  /** Get projects visible to the current user based on role/company */
+  const getVisibleProjects = useCallback(() => {
+    if (!currentUser) return [];
+    if (currentUser.role === ROLES.SUPER_ADMIN) return projects;
+    const companyProjects = projects.filter((p) => p.companyId === currentUser.companyId);
+
+    if (currentUser.role === ROLES.EMPLOYEE) {
+      return companyProjects.filter((p) => {
+        const members = p.teamMemberIds || (p.teamMembers ? p.teamMembers.map((m) => m.id) : []);
+        return members.includes(currentUser.id);
+      });
+    }
+    if (currentUser.role === ROLES.MANAGER) {
+      return companyProjects.filter((p) => {
+        const members = p.teamMemberIds || (p.teamMembers ? p.teamMembers.map((m) => m.id) : []);
+        return p.managerId === currentUser.id || members.includes(currentUser.id);
+      });
+    }
+    return companyProjects;
+  }, [currentUser, projects]);
+
+  /** Get tasks visible to the current user based on role/company */
+  const getVisibleTasks = useCallback(() => {
+    if (!currentUser) return [];
+    const visibleProjectIds = getVisibleProjects().map((p) => p.id);
+
+    if (currentUser.role === ROLES.SUPER_ADMIN) return tasks;
+
+    const companyTasks = tasks.filter((t) => visibleProjectIds.includes(t.projectId));
+
+    if (currentUser.role === ROLES.EMPLOYEE) {
+      return companyTasks.filter((t) => t.assigneeId === currentUser.id);
+    }
+
+    if (currentUser.role === ROLES.MANAGER) {
+      return companyTasks.filter((t) => {
+        // Manager's own tasks
+        if (t.assigneeId === currentUser.id) return true;
+        // Unassigned tasks in a project managed by this manager
+        if (!t.assigneeId) {
+          const project = projects.find((p) => p.id === t.projectId);
+          return project?.managerId === currentUser.id;
+        }
+        // Tasks assigned to members of the manager's department
+        const assignee = users.find((u) => u.id === t.assigneeId);
+        return assignee?.department === currentUser.department;
+      });
+    }
+
+    return companyTasks;
+  }, [currentUser, tasks, users, projects, getVisibleProjects]);
+
+  /** Get tasks assigned to current user (My Tasks) */
+  const getMyTasks = useCallback(() => {
+    if (!currentUser) return [];
+    return tasks.filter((t) => t.assigneeId === currentUser.id);
+  }, [currentUser, tasks]);
+
+  // ── User CRUD (Saves directly to PostgreSQL) ──
+  const addUser = useCallback(async (user) => {
+    const res = await api.post('/users', {
+      ...user,
+      companyId: companyId || user.companyId,
+    });
+
+    if (res?.data) {
+      setUsers((prev) => [res.data, ...prev]);
+      return res.data;
+    }
+    throw new Error(res?.message || 'Failed to create user');
+  }, [companyId]);
+
+  const updateUser = useCallback(async (id, updates) => {
+    const res = await api.patch(`/users/${id}`, updates);
+    const updatedUser = res?.data || updates;
+
+    if (currentUser && id === currentUser.id) {
+      const mergedUser = { ...currentUser, ...updatedUser };
+      setCurrentUser(mergedUser);
+      authService.updateSession(mergedUser);
+    }
+    setUsers((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, ...updatedUser } : u))
+    );
+    return res?.data;
+  }, [currentUser]);
+
+  const deactivateUser = useCallback(async (id) => {
+    const res = await api.patch(`/users/${id}/status`);
+    if (res?.data) {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, status: res.data.status } : u))
+      );
+      return res.data;
+    }
+  }, []);
+
+  const deleteUser = useCallback(async (id) => {
+    await api.delete(`/users/${id}`);
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+  }, []);
+
+  // ── Project CRUD (Saves directly to PostgreSQL) ──
+  const addProject = useCallback(async (project) => {
+    const res = await api.post('/projects', {
+      ...project,
+      companyId: companyId || project.companyId,
+    });
+
+    if (res?.data) {
+      setProjects((prev) => [res.data, ...prev]);
+      return res.data;
+    }
+    throw new Error(res?.message || 'Failed to create project');
+  }, [companyId]);
+
+  const updateProject = useCallback(async (id, updates) => {
+    const res = await api.patch(`/projects/${id}`, updates);
+    const updated = res?.data || updates;
+
+    setProjects((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...updated } : p))
+    );
+    return res?.data;
+  }, []);
+
+  // ── Task CRUD (Saves directly to PostgreSQL) ──
+  const addTask = useCallback(async (task) => {
+    const res = await api.post('/tasks', task);
+    if (!res?.data) {
+      throw new Error(res?.message || 'Failed to create task');
+    }
+    const savedTask = res.data;
+
+    setTasks((prevTasks) => {
+      const updated = [savedTask, ...prevTasks];
+      if (savedTask.projectId) {
+        const projTasks = updated.filter((t) => t.projectId === savedTask.projectId);
+        const completed = projTasks.filter((t) => t.status === 'Completed').length;
+        const progress = projTasks.length > 0 ? Math.round((completed / projTasks.length) * 100) : 0;
+        setProjects((prevProjects) =>
+          prevProjects.map((p) => (p.id === savedTask.projectId ? { ...p, progress } : p))
+        );
+      }
+      return updated;
+    });
+
+    return savedTask;
+  }, []);
+
+  const updateTask = useCallback(async (id, updates) => {
+    const res = await api.patch(`/tasks/${id}`, updates);
+    const serverTask = res?.data;
+
+    setTasks((prevTasks) => {
+      const updated = prevTasks.map((t) => (t.id === id ? { ...t, ...(serverTask || updates) } : t));
+      const target = updated.find((t) => t.id === id);
+      if (target?.projectId) {
+        const projTasks = updated.filter((t) => t.projectId === target.projectId);
+        const completed = projTasks.filter((t) => t.status === 'Completed').length;
+        const progress = projTasks.length > 0 ? Math.round((completed / projTasks.length) * 100) : 0;
+        setProjects((prevProjects) =>
+          prevProjects.map((p) => (p.id === target.projectId ? { ...p, progress } : p))
+        );
+      }
+      return updated;
+    });
+    return serverTask;
+  }, []);
+
+  const deleteTask = useCallback(async (id) => {
+    await api.delete(`/tasks/${id}`);
+
+    setTasks((prevTasks) => {
+      const target = prevTasks.find((t) => t.id === id);
+      const updated = prevTasks.filter((t) => t.id !== id);
+      if (target?.projectId) {
+        const projTasks = updated.filter((t) => t.projectId === target.projectId);
+        const completed = projTasks.filter((t) => t.status === 'Completed').length;
+        const progress = projTasks.length > 0 ? Math.round((completed / projTasks.length) * 100) : 0;
+        setProjects((prevProjects) =>
+          prevProjects.map((p) => (p.id === target.projectId ? { ...p, progress } : p))
+        );
+      }
+      return updated;
+    });
+  }, []);
+
+  // ── Lookup Helpers ──
   const getUserById = useCallback(
-    (id) => allUsers.find((u) => u.id === id),
-    [allUsers]
+    (id) => users.find((u) => u.id === id),
+    [users]
   );
 
-  // Helper: get tasks for a project
   const getTasksByProject = useCallback(
     (projectId) => tasks.filter((t) => t.projectId === projectId),
     [tasks]
   );
 
-  // Helper: get project by ID
   const getProjectById = useCallback(
     (id) => projects.find((p) => p.id === id),
     [projects]
   );
 
   const value = {
-    // State
+    // Auth
     currentUser,
+    isAuthenticated,
+    userRole,
+    companyId,
+    login,
+    logout,
+    // Company
     company,
+    companies,
+    // Data (scoped)
     users,
     allUsers,
     projects,
     tasks,
-    isAuthenticated,
-    // User actions
+    // Scoped accessors
+    getVisibleUsers,
+    getVisibleProjects,
+    getVisibleTasks,
+    getMyTasks,
+    // User CRUD
     addUser,
     updateUser,
     deactivateUser,
-    // Project actions
+    deleteUser,
+    // Project CRUD
     addProject,
     updateProject,
-    // Task actions
+    // Task CRUD
     addTask,
     updateTask,
     deleteTask,
-    // Auth
-    login,
-    logout,
     // Helpers
     getUserById,
     getTasksByProject,

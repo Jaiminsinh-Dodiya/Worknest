@@ -1,0 +1,132 @@
+// WorkNest Database Schema
+// Prisma ORM configuration for PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Canonical Roles ──
+enum Role {
+  SUPER_ADMIN
+  COMPANY_OWNER
+  HR
+  MANAGER
+  EMPLOYEE
+}
+
+enum ProjectStatus {
+  Active
+  Completed
+  OnHold
+}
+
+enum TaskPriority {
+  High
+  Medium
+  Low
+}
+
+enum TaskStatus {
+  Todo
+  InProgress
+  Completed
+}
+
+enum UserStatus {
+  Active
+  Inactive
+}
+
+// ── Multi-Tenant Company ──
+model Company {
+  id        String     @id @default(cuid())
+  name      String
+  industry  String
+  size      String
+  plan      String     @default("Starter")
+  status    UserStatus @default(Active)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  users    User[]
+  projects Project[]
+
+  @@map("companies")
+}
+
+// ── User Account ──
+model User {
+  id         String     @id @default(cuid())
+  name       String
+  email      String     @unique
+  password   String
+  phone      String?
+  role       Role
+  department String
+  companyId  String?
+  status     UserStatus @default(Active)
+  avatar     String?
+  joinedAt   DateTime   @default(now())
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  company         Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  managedProjects Project[] @relation("ProjectManager")
+  memberProjects  Project[] @relation("ProjectMembers")
+  assignedTasks   Task[]    @relation("TaskAssignee")
+
+  @@index([companyId])
+  @@index([role])
+  @@map("users")
+}
+
+// ── Project ──
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String
+  department  String?       @default("Development")
+  managerId   String
+  companyId   String
+  progress    Int           @default(0)
+  status      ProjectStatus @default(Active)
+  startDate   DateTime
+  dueDate     DateTime
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  manager     User     @relation("ProjectManager", fields: [managerId], references: [id])
+  teamMembers User[]   @relation("ProjectMembers")
+  tasks       Task[]
+
+  @@index([companyId])
+  @@index([managerId])
+  @@map("projects")
+}
+
+// ── Task ──
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String
+  projectId   String
+  assigneeId  String
+  priority    TaskPriority @default(Medium)
+  status      TaskStatus   @default(Todo)
+  dueDate     DateTime
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User    @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@map("tasks")
+}
