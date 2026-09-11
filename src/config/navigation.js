@@ -33,7 +33,7 @@ export const navigationByRole = {
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
       { to: '/users', label: 'Users', icon: Users },
       { to: '/projects', label: 'Projects', icon: FolderKanban },
-      { to: '/tasks', label: 'Tasks', icon: ClipboardList },
+      { to: '/tasks', label: 'All Tasks', icon: ClipboardList },
       { to: '/ai', label: 'AI Assistant', icon: Bot },
     ],
   },

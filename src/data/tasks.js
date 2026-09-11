@@ -5,7 +5,7 @@ export const mockTasks = [
     title: 'Design Login Page',
     description: 'Create a modern, clean login page with email/password fields and demo credentials.',
     projectId: 'proj-1',
-    assigneeId: 'user-1',
+    assigneeId: 'user-7',
     priority: 'High',
     status: 'In Progress',
     dueDate: '2024-08-27',

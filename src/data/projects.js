@@ -4,7 +4,7 @@ export const mockProjects = [
     name: 'Website Redesign',
     description: 'Redesign the company\'s public website with modern UI/UX, improved performance, and mobile responsiveness.',
     managerId: 'user-3',
-    teamMemberIds: ['user-1', 'user-3', 'user-5', 'user-7'],
+    teamMemberIds: ['user-3', 'user-5', 'user-7'],
     progress: 78,
     status: 'Active',
     companyId: 'company-1',

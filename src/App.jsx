@@ -13,6 +13,7 @@ import AIAssistant from './pages/AIAssistant';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import MyTasks from './pages/MyTasks';
+import AllTasks from './pages/AllTasks';
 
 // Role Dashboards (alias routes)
 import SuperAdminDashboard from './pages/dashboards/SuperAdminDashboard';
@@ -124,7 +125,7 @@ export default function App() {
           path="/tasks"
           element={
             <RoleRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.COMPANY_OWNER, ROLES.MANAGER]}>
-              <MyTasks />
+              <AllTasks />
             </RoleRoute>
           }
         />
