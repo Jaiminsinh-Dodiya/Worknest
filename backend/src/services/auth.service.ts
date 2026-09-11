@@ -119,4 +119,62 @@ export class AuthService {
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
+
+  /**
+   * Fetch active demo accounts from PostgreSQL database for development & evaluation
+   */
+  static async getDemoAccounts() {
+    const DEMO_MAP: Record<string, { label: string; defaultPassword: string; description: string }> = {
+      'admin@worknest.local': { label: 'Super Admin', defaultPassword: 'admin123', description: 'Platform Administrator' },
+      'owner@worknest.local': { label: 'Company Owner', defaultPassword: 'owner123', description: 'WorkNest Technologies' },
+      'hr@worknest.local': { label: 'HR Lead', defaultPassword: 'hr123', description: 'Human Resources' },
+      'manager@worknest.local': { label: 'Dev Manager', defaultPassword: 'manager123', description: 'Development Department' },
+      'anita@worknest.local': { label: 'Design Manager', defaultPassword: 'anita123', description: 'Design Department' },
+      'employee@worknest.local': { label: 'Dev Employee', defaultPassword: 'employee123', description: 'Development Team' },
+      'amit@worknest.local': { label: 'Design Employee', defaultPassword: 'amit123', description: 'Design Team' },
+      'ravi@technova.local': { label: 'Tenant 2 Owner', defaultPassword: 'ravi123', description: 'TechNova Solutions' },
+    };
+
+    const demoEmails = Object.keys(DEMO_MAP);
+
+    const users = await prisma.user.findMany({
+      where: {
+        email: { in: demoEmails },
+        status: 'Active',
+      },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    const roleOrder: Record<string, number> = {
+      SUPER_ADMIN: 1,
+      COMPANY_OWNER: 2,
+      HR: 3,
+      MANAGER: 4,
+      EMPLOYEE: 5,
+    };
+
+    return users
+      .map((u) => {
+        const meta = DEMO_MAP[u.email];
+        return {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          password: meta?.defaultPassword || 'worknest123',
+          role: u.role,
+          label: meta?.label || u.name,
+          description: meta?.description || u.department,
+          department: u.department,
+          companyName: u.company?.name || 'Platform Level',
+        };
+      })
+      .sort((a, b) => (roleOrder[a.role] || 99) - (roleOrder[b.role] || 99));
+  }
 }
