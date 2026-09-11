@@ -1,8 +1,4 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { mockUsers } from '../data/users';
-import { mockProjects as defaultMockProjects } from '../data/projects';
-import { mockTasks as defaultMockTasks } from '../data/tasks';
-import { mockCompanies as defaultMockCompanies, getCompanyById } from '../data/companies';
 import { authService } from '../services/authService';
 import { api } from '../services/api';
 import { ROLES } from '../config/roles';
@@ -14,11 +10,11 @@ export function AppProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(() => authService.getCurrentUser());
   const [isAuthenticated, setIsAuthenticated] = useState(() => authService.isAuthenticated());
 
-  // ── Data State (Loaded from API with fallback to mock data) ──
-  const [users, setUsers] = useState(mockUsers);
-  const [projects, setProjects] = useState(defaultMockProjects);
-  const [tasks, setTasks] = useState(defaultMockTasks);
-  const [companies, setCompanies] = useState(defaultMockCompanies);
+  // ── Data State (Loaded strictly from live PostgreSQL Backend) ──
+  const [users, setUsers] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [companies, setCompanies] = useState([]);
 
   // ── Derived State ──
   const userRole = currentUser?.role || null;
@@ -28,8 +24,9 @@ export function AppProvider({ children }) {
     if (!companyId) return { id: null, name: 'WorkNest Platform' };
     const found = companies.find((c) => c.id === companyId);
     if (found) return found;
-    return getCompanyById(companyId) || { id: companyId, name: 'Unknown Company' };
-  }, [companyId, companies]);
+    if (currentUser?.company) return currentUser.company;
+    return { id: companyId, name: 'WorkNest Technologies' };
+  }, [companyId, companies, currentUser]);
 
   // ── Sync with Live PostgreSQL Backend on Authentication ──
   useEffect(() => {
@@ -112,6 +109,10 @@ export function AppProvider({ children }) {
     authService.logout();
     setCurrentUser(null);
     setIsAuthenticated(false);
+    setUsers([]);
+    setProjects([]);
+    setTasks([]);
+    setCompanies([]);
   }, []);
 
   // ── Company-Scoped Data Helpers ──
@@ -192,137 +193,79 @@ export function AppProvider({ children }) {
 
   // ── User CRUD (Saves directly to PostgreSQL) ──
   const addUser = useCallback(async (user) => {
-    try {
-      const res = await api.post('/users', {
-        ...user,
-        companyId: companyId || user.companyId,
-      });
-
-      if (res?.data) {
-        setUsers((prev) => [res.data, ...prev]);
-        return res.data;
-      }
-    } catch (err) {
-      console.warn('API addUser failed, using local state:', err);
-    }
-
-    // Local fallback
-    const newUser = {
+    const res = await api.post('/users', {
       ...user,
-      id: `user-${Date.now()}`,
       companyId: companyId || user.companyId,
-      status: 'Active',
-      avatar: null,
-      joinedAt: new Date().toISOString().split('T')[0],
-    };
-    setUsers((prev) => [newUser, ...prev]);
-    return newUser;
+    });
+
+    if (res?.data) {
+      setUsers((prev) => [res.data, ...prev]);
+      return res.data;
+    }
+    throw new Error(res?.message || 'Failed to create user');
   }, [companyId]);
 
   const updateUser = useCallback(async (id, updates) => {
-    try {
-      await api.patch(`/users/${id}`, updates);
-    } catch (err) {
-      console.warn('API updateUser failed, using local state:', err);
-    }
+    const res = await api.patch(`/users/${id}`, updates);
+    const updatedUser = res?.data || updates;
 
     if (currentUser && id === currentUser.id) {
-      const updatedUser = { ...currentUser, ...updates };
-      setCurrentUser(updatedUser);
-      authService.updateSession(updatedUser);
+      const mergedUser = { ...currentUser, ...updatedUser };
+      setCurrentUser(mergedUser);
+      authService.updateSession(mergedUser);
     }
     setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, ...updates } : u))
+      prev.map((u) => (u.id === id ? { ...u, ...updatedUser } : u))
     );
+    return res?.data;
   }, [currentUser]);
 
   const deactivateUser = useCallback(async (id) => {
-    try {
-      const res = await api.patch(`/users/${id}/status`);
-      if (res?.data) {
-        setUsers((prev) =>
-          prev.map((u) => (u.id === id ? { ...u, status: res.data.status } : u))
-        );
-        return;
-      }
-    } catch (err) {
-      console.warn('API deactivateUser failed, using local state:', err);
+    const res = await api.patch(`/users/${id}/status`);
+    if (res?.data) {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, status: res.data.status } : u))
+      );
+      return res.data;
     }
-
-    setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, status: u.status === 'Active' ? 'Inactive' : 'Active' } : u))
-    );
   }, []);
 
   const deleteUser = useCallback(async (id) => {
-    try {
-      await api.delete(`/users/${id}`);
-    } catch (err) {
-      console.warn('API deleteUser failed, using local state:', err);
-    }
-
+    await api.delete(`/users/${id}`);
     setUsers((prev) => prev.filter((u) => u.id !== id));
   }, []);
 
   // ── Project CRUD (Saves directly to PostgreSQL) ──
   const addProject = useCallback(async (project) => {
-    try {
-      const res = await api.post('/projects', {
-        ...project,
-        companyId: companyId || project.companyId,
-      });
-
-      if (res?.data) {
-        setProjects((prev) => [res.data, ...prev]);
-        return res.data;
-      }
-    } catch (err) {
-      console.warn('API addProject failed, using local state:', err);
-    }
-
-    const newProject = {
+    const res = await api.post('/projects', {
       ...project,
-      id: `proj-${Date.now()}`,
       companyId: companyId || project.companyId,
-      progress: 0,
-      status: 'Active',
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    setProjects((prev) => [newProject, ...prev]);
-    return newProject;
+    });
+
+    if (res?.data) {
+      setProjects((prev) => [res.data, ...prev]);
+      return res.data;
+    }
+    throw new Error(res?.message || 'Failed to create project');
   }, [companyId]);
 
   const updateProject = useCallback(async (id, updates) => {
-    try {
-      await api.patch(`/projects/${id}`, updates);
-    } catch (err) {
-      console.warn('API updateProject failed, using local state:', err);
-    }
+    const res = await api.patch(`/projects/${id}`, updates);
+    const updated = res?.data || updates;
 
     setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+      prev.map((p) => (p.id === id ? { ...p, ...updated } : p))
     );
+    return res?.data;
   }, []);
 
   // ── Task CRUD (Saves directly to PostgreSQL) ──
   const addTask = useCallback(async (task) => {
-    let savedTask;
-    try {
-      const res = await api.post('/tasks', task);
-      if (res?.data) {
-        savedTask = res.data;
-      }
-    } catch (err) {
-      console.warn('API addTask failed, using local state:', err);
+    const res = await api.post('/tasks', task);
+    if (!res?.data) {
+      throw new Error(res?.message || 'Failed to create task');
     }
-
-    if (!savedTask) {
-      savedTask = {
-        ...task,
-        id: `task-${Date.now()}`,
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-    }
+    const savedTask = res.data;
 
     setTasks((prevTasks) => {
       const updated = [savedTask, ...prevTasks];
@@ -341,14 +284,11 @@ export function AppProvider({ children }) {
   }, []);
 
   const updateTask = useCallback(async (id, updates) => {
-    try {
-      await api.patch(`/tasks/${id}`, updates);
-    } catch (err) {
-      console.warn('API updateTask failed, using local state:', err);
-    }
+    const res = await api.patch(`/tasks/${id}`, updates);
+    const serverTask = res?.data;
 
     setTasks((prevTasks) => {
-      const updated = prevTasks.map((t) => (t.id === id ? { ...t, ...updates } : t));
+      const updated = prevTasks.map((t) => (t.id === id ? { ...t, ...(serverTask || updates) } : t));
       const target = updated.find((t) => t.id === id);
       if (target?.projectId) {
         const projTasks = updated.filter((t) => t.projectId === target.projectId);
@@ -360,14 +300,11 @@ export function AppProvider({ children }) {
       }
       return updated;
     });
+    return serverTask;
   }, []);
 
   const deleteTask = useCallback(async (id) => {
-    try {
-      await api.delete(`/tasks/${id}`);
-    } catch (err) {
-      console.warn('API deleteTask failed, using local state:', err);
-    }
+    await api.delete(`/tasks/${id}`);
 
     setTasks((prevTasks) => {
       const target = prevTasks.find((t) => t.id === id);
