@@ -2,13 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
-import { demoAccounts } from '../data/users';
 import { getDashboardPath } from '../config/roles';
 import TitleBar from '../components/layout/TitleBar';
 
 export default function Login() {
-  const [email, setEmail] = useState('owner@worknest.local');
-  const [password, setPassword] = useState('owner123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,9 +20,6 @@ export default function Login() {
     setErrorMessage('');
     setIsLoading(true);
 
-    // Simulate small network delay
-    await new Promise((resolve) => setTimeout(resolve, 400));
-
     const result = await login(email, password);
 
     if (result.success) {
@@ -33,12 +29,6 @@ export default function Login() {
       setErrorMessage(result.error || 'Invalid email or password.');
       setIsLoading(false);
     }
-  };
-
-  const handleSelectDemo = (account) => {
-    setEmail(account.email);
-    setPassword(account.password);
-    setErrorMessage('');
   };
 
   return (
@@ -142,36 +132,6 @@ export default function Login() {
                 )}
               </button>
             </form>
-          </div>
-
-          {/* Quick Demo Account Selector */}
-          <div className="mt-5 p-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2.5 text-center">
-              Switch Mock Role (Evaluation Demo)
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-              {demoAccounts.map((account) => {
-                const isSelected = email === account.email;
-                return (
-                  <button
-                    key={account.role}
-                    type="button"
-                    onClick={() => handleSelectDemo(account)}
-                    className={`px-2.5 py-2 rounded-lg text-xs font-medium transition-all text-left cursor-pointer border ${
-                      isSelected
-                        ? 'bg-primary-50 border-primary-300 text-primary-700 dark:bg-primary-900/30 dark:border-primary-600 dark:text-primary-300 shadow-xs'
-                        : 'bg-gray-50 dark:bg-slate-700/50 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    <p className="font-semibold truncate">{account.label}</p>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{account.email.split('@')[0]}</p>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-2.5 text-center">
-              Click any role card to populate credentials and test role-specific dashboards.
-            </p>
           </div>
         </div>
       </div>
