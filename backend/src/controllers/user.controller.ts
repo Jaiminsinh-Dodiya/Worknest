@@ -70,4 +70,15 @@ export class UserController {
       next(error);
     }
   }
+
+  static async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      const id = req.params.id as string;
+      const result = await UserService.deleteUser(id, req.user);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

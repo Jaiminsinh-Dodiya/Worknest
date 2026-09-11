@@ -42,5 +42,6 @@ router.get('/:id', UserController.getById);
 router.post('/', requirePermission('users.manage'), validate(createUserSchema), UserController.create);
 router.patch('/:id', validate(updateUserSchema), UserController.update);
 router.patch('/:id/status', requirePermission('users.manage'), UserController.toggleStatus);
+router.delete('/:id', requirePermission('users.manage'), UserController.delete);
 
 export default router;

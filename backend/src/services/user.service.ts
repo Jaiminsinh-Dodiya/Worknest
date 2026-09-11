@@ -258,4 +258,53 @@ export class UserService {
 
     return updated;
   }
+
+  /**
+   * Delete a user
+   */
+  static async deleteUser(targetId: string, modifier: TokenPayload) {
+    const existing = await prisma.user.findUnique({
+      where: { id: targetId },
+    });
+
+    if (!existing) {
+      throw new NotFoundError('User not found');
+    }
+
+    if (modifier.role !== 'SUPER_ADMIN' && existing.companyId !== modifier.companyId) {
+      throw new ForbiddenError('Cannot delete users outside your company');
+    }
+
+    if (existing.id === modifier.userId) {
+      throw new BadRequestError('Cannot delete your own account');
+    }
+
+    if (existing.role === 'SUPER_ADMIN') {
+      throw new ForbiddenError('Super Admin accounts cannot be deleted');
+    }
+
+    if (existing.role === 'COMPANY_OWNER' && modifier.role !== 'SUPER_ADMIN') {
+      throw new ForbiddenError('Only Super Admin can delete a Company Owner');
+    }
+
+    // Check if user manages projects
+    const managingCount = await prisma.project.count({
+      where: { managerId: targetId },
+    });
+
+    if (managingCount > 0) {
+      throw new BadRequestError('Cannot delete a user who is currently managing projects. Please reassign project manager first.');
+    }
+
+    // Clean up assigned tasks
+    await prisma.task.deleteMany({
+      where: { assigneeId: targetId },
+    });
+
+    await prisma.user.delete({
+      where: { id: targetId },
+    });
+
+    return { success: true, message: 'User deleted successfully' };
+  }
 }
