@@ -67,6 +67,17 @@ export class TaskService {
 
     if (user.role === 'EMPLOYEE') {
       whereClause.assigneeId = user.userId;
+    } else if (user.role === 'MANAGER') {
+      const managerUser = await prisma.user.findUnique({
+        where: { id: user.userId },
+        select: { department: true },
+      });
+      if (managerUser?.department) {
+        whereClause.OR = [
+          { assigneeId: user.userId },
+          { assignee: { department: managerUser.department } },
+        ];
+      }
     }
 
     const tasks = await prisma.task.findMany({
