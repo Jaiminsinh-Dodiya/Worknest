@@ -6,6 +6,7 @@ import { TokenPayload } from '../types/index.js';
 export interface CreateProjectDTO {
   name: string;
   description: string;
+  department?: string;
   managerId: string;
   teamMemberIds?: string[];
   companyId?: string;
@@ -17,6 +18,7 @@ export interface CreateProjectDTO {
 export interface UpdateProjectDTO {
   name?: string;
   description?: string;
+  department?: string;
   managerId?: string;
   teamMemberIds?: string[];
   progress?: number;
@@ -33,10 +35,20 @@ const mapStatusToDb = (status?: string): ProjectStatus | undefined => {
   return ProjectStatus.Active;
 };
 
-// Convert DB enum "OnHold" to "On Hold" for frontend compatibility
+// Convert DB enum "OnHold" to "On Hold" for frontend compatibility & calculate dynamic progress
 const mapProjectForClient = (project: any) => {
+  let progress = project.progress;
+  if (project.tasks && Array.isArray(project.tasks)) {
+    if (project.tasks.length === 0) {
+      progress = 0;
+    } else {
+      const completed = project.tasks.filter((t: any) => t.status === 'Completed').length;
+      progress = Math.round((completed / project.tasks.length) * 100);
+    }
+  }
   return {
     ...project,
+    progress,
     status: project.status === 'OnHold' ? 'On Hold' : project.status,
     teamMemberIds: project.teamMembers ? project.teamMembers.map((m: any) => m.id) : [],
   };
@@ -58,6 +70,9 @@ export class ProjectService {
           },
           company: {
             select: { id: true, name: true },
+          },
+          tasks: {
+            select: { id: true, status: true },
           },
           _count: {
             select: { tasks: true },
@@ -94,6 +109,9 @@ export class ProjectService {
         },
         teamMembers: {
           select: { id: true, name: true, email: true, role: true },
+        },
+        tasks: {
+          select: { id: true, status: true },
         },
         _count: {
           select: { tasks: true },
@@ -169,6 +187,7 @@ export class ProjectService {
       data: {
         name: data.name,
         description: data.description,
+        department: data.department || 'Development',
         managerId: data.managerId,
         companyId: targetCompanyId,
         startDate: new Date(data.startDate),
@@ -216,6 +235,7 @@ export class ProjectService {
       data: {
         name: data.name,
         description: data.description,
+        department: data.department,
         managerId: data.managerId,
         progress: data.progress,
         status: dbStatus,
