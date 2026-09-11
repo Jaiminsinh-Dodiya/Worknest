@@ -6,6 +6,7 @@ import {
   Calendar,
   User,
   Clock,
+  Edit3,
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useToast } from '../contexts/ToastContext';
@@ -25,7 +26,16 @@ const statusColumns = ['Todo', 'In Progress', 'Completed'];
 export default function ProjectDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getProjectById, getTasksByProject, getUserById, allUsers, addTask, updateTask, currentUser } = useApp();
+  const {
+    getProjectById,
+    getTasksByProject,
+    getUserById,
+    allUsers,
+    addTask,
+    updateTask,
+    updateProject,
+    currentUser,
+  } = useApp();
   const { addToast } = useToast();
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTask, setNewTask] = useState({
@@ -40,14 +50,41 @@ export default function ProjectDetails() {
   const project = getProjectById(id);
   const projectTasks = getTasksByProject(id);
   const canManageTasks = hasPermission(currentUser?.role, 'tasks.manage');
+  const canManageProjects = hasPermission(currentUser?.role, 'projects.manage');
+
+  const [deptFilter, setDeptFilter] = useState('All');
+  const [showEditProject, setShowEditProject] = useState(false);
+  const [editProjectForm, setEditProjectForm] = useState({
+    name: '',
+    description: '',
+    status: 'Active',
+    managerId: '',
+    dueDate: '',
+    progress: 0,
+    teamMemberIds: [],
+  });
+
+  const availableDepts = useMemo(() => {
+    const depts = new Set(
+      (projectTasks || [])
+        .map((t) => getUserById(t.assigneeId)?.department)
+        .filter(Boolean)
+    );
+    return ['All', ...Array.from(depts)];
+  }, [projectTasks, getUserById]);
 
   const tasksByStatus = useMemo(() => {
     const grouped = {};
+    const filtered = (projectTasks || []).filter((t) => {
+      if (deptFilter === 'All') return true;
+      const assignee = getUserById(t.assigneeId);
+      return assignee?.department === deptFilter;
+    });
     statusColumns.forEach((status) => {
-      grouped[status] = projectTasks ? projectTasks.filter((t) => t.status === status) : [];
+      grouped[status] = filtered.filter((t) => t.status === status);
     });
     return grouped;
-  }, [projectTasks]);
+  }, [projectTasks, deptFilter, getUserById]);
 
   if (!project) {
     return (
@@ -85,6 +122,48 @@ export default function ProjectDetails() {
     addToast(`Task moved to ${newStatus}.`, 'success');
   };
 
+  const handleProjectStatusChange = (newStatus) => {
+    updateProject(id, { status: newStatus });
+    addToast(`Project status updated to ${newStatus}.`, 'success');
+  };
+
+  const handleOpenEditProject = () => {
+    if (!project) return;
+    setEditProjectForm({
+      name: project.name || '',
+      description: project.description || '',
+      status: project.status || 'Active',
+      managerId: project.managerId || '',
+      dueDate: project.dueDate ? new Date(project.dueDate).toISOString().split('T')[0] : '',
+      progress: project.progress || 0,
+      teamMemberIds: project.teamMemberIds || [],
+    });
+    setShowEditProject(true);
+  };
+
+  const handleEditProjectSubmit = (e) => {
+    e.preventDefault();
+    if (!editProjectForm.name) return;
+    updateProject(id, {
+      ...editProjectForm,
+      progress: Number(editProjectForm.progress),
+    });
+    addToast('Project updated successfully.', 'success');
+    setShowEditProject(false);
+  };
+
+  const toggleTeamMember = (memberId) => {
+    setEditProjectForm((prev) => {
+      const exists = prev.teamMemberIds.includes(memberId);
+      return {
+        ...prev,
+        teamMemberIds: exists
+          ? prev.teamMemberIds.filter((mId) => mId !== memberId)
+          : [...prev.teamMemberIds, memberId],
+      };
+    });
+  };
+
   const canEditTaskStatus = (task) => {
     if (canManageTasks) return true;
     if (currentUser?.role === ROLES.EMPLOYEE) {
@@ -108,15 +187,39 @@ export default function ProjectDetails() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{project.name}</h1>
-              <Badge>{project.status}</Badge>
+              {canManageProjects ? (
+                <select
+                  value={project.status}
+                  onChange={(e) => handleProjectStatusChange(e.target.value)}
+                  className="px-2.5 py-1 text-xs font-semibold rounded-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 cursor-pointer focus:ring-2 focus:ring-primary-500 shadow-sm transition-colors"
+                >
+                  <option value="Active">🟢 Active</option>
+                  <option value="On Hold">🟠 On Hold</option>
+                  <option value="Completed">🔵 Completed</option>
+                </select>
+              ) : (
+                <Badge>{project.status}</Badge>
+              )}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">{project.description}</p>
           </div>
-          {canManageTasks && (
-            <Button icon={Plus} onClick={() => setShowAddTask(true)} size="sm">
-              New Task
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {canManageProjects && (
+              <Button
+                variant="secondary"
+                icon={Edit3}
+                onClick={handleOpenEditProject}
+                size="sm"
+              >
+                Edit Project
+              </Button>
+            )}
+            {canManageTasks && (
+              <Button icon={Plus} onClick={() => setShowAddTask(true)} size="sm">
+                New Task
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -162,6 +265,27 @@ export default function ProjectDetails() {
           </div>
         </div>
       </Card>
+
+      {/* Kanban Board Header & Department Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Tasks Board</h2>
+        {availableDepts.length > 2 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 dark:text-gray-400">Department:</span>
+            <select
+              value={deptFilter}
+              onChange={(e) => setDeptFilter(e.target.value)}
+              className="px-2.5 py-1 text-xs bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer"
+            >
+              {availableDepts.map((d) => (
+                <option key={d} value={d}>
+                  {d === 'All' ? 'All Departments' : d}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
 
       {/* Kanban Board */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -313,6 +437,146 @@ export default function ProjectDetails() {
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="secondary" type="button" onClick={() => setShowAddTask(false)}>Cancel</Button>
               <Button type="submit">Create Task</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Edit Project Modal */}
+      {canManageProjects && (
+        <Modal
+          isOpen={showEditProject}
+          onClose={() => setShowEditProject(false)}
+          title="Edit Project"
+        >
+          <form onSubmit={handleEditProjectSubmit} className="space-y-4">
+            <Input
+              label="Project Name"
+              value={editProjectForm.name}
+              onChange={(e) =>
+                setEditProjectForm({ ...editProjectForm, name: e.target.value })
+              }
+              placeholder="Enter project name"
+              required
+            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Description
+              </label>
+              <textarea
+                value={editProjectForm.description}
+                onChange={(e) =>
+                  setEditProjectForm({ ...editProjectForm, description: e.target.value })
+                }
+                placeholder="Describe the project"
+                rows={3}
+                className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 resize-none"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Status
+                </label>
+                <select
+                  value={editProjectForm.status}
+                  onChange={(e) =>
+                    setEditProjectForm({ ...editProjectForm, status: e.target.value })
+                  }
+                  className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+                >
+                  <option value="Active">Active</option>
+                  <option value="On Hold">On Hold</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Project Manager
+                </label>
+                <select
+                  value={editProjectForm.managerId}
+                  onChange={(e) =>
+                    setEditProjectForm({ ...editProjectForm, managerId: e.target.value })
+                  }
+                  className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+                >
+                  <option value="">Select manager</option>
+                  {allUsers
+                    .filter((u) => u.role === ROLES.MANAGER || u.role === ROLES.COMPANY_OWNER)
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.role})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Due Date"
+                type="date"
+                value={editProjectForm.dueDate}
+                onChange={(e) =>
+                  setEditProjectForm({ ...editProjectForm, dueDate: e.target.value })
+                }
+              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Progress ({editProjectForm.progress}%)
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={editProjectForm.progress}
+                  onChange={(e) =>
+                    setEditProjectForm({
+                      ...editProjectForm,
+                      progress: Number(e.target.value),
+                    })
+                  }
+                  className="w-full mt-2 accent-primary-600"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Team Members
+              </label>
+              <div className="max-h-40 overflow-y-auto space-y-1.5 p-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
+                {allUsers.map((u) => {
+                  const isChecked = editProjectForm.teamMemberIds.includes(u.id);
+                  return (
+                    <label
+                      key={u.id}
+                      className="flex items-center gap-2 p-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer text-xs text-gray-800 dark:text-gray-200"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleTeamMember(u.id)}
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      <span className="font-medium">{u.name}</span>
+                      <span className="text-gray-400">({u.role} - {u.department})</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setShowEditProject(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Save Changes</Button>
             </div>
           </form>
         </Modal>
