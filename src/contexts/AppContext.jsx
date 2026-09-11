@@ -227,6 +227,16 @@ export function AppProvider({ children }) {
     );
   }, []);
 
+  const deleteUser = useCallback(async (id) => {
+    try {
+      await api.delete(`/users/${id}`);
+    } catch (err) {
+      console.warn('API deleteUser failed, using local state:', err);
+    }
+
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+  }, []);
+
   // ── Project CRUD (Saves directly to PostgreSQL) ──
   const addProject = useCallback(async (project) => {
     try {
@@ -351,6 +361,7 @@ export function AppProvider({ children }) {
     addUser,
     updateUser,
     deactivateUser,
+    deleteUser,
     // Project CRUD
     addProject,
     updateProject,
