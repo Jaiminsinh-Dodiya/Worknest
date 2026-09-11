@@ -23,6 +23,7 @@ export default function Users() {
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
+    password: '',
     phone: '',
     department: 'Development',
     role: ROLES.EMPLOYEE,
@@ -40,21 +41,29 @@ export default function Users() {
     });
   }, [allUsers, search, roleFilter]);
 
-  const handleAddUser = (e) => {
+  const handleAddUser = async (e) => {
     e.preventDefault();
     if (!newUser.name || !newUser.email) return;
-    addUser(newUser);
-    addToast('User added successfully.', 'success');
-    setShowAddModal(false);
-    setNewUser({ name: '', email: '', phone: '', department: 'Development', role: ROLES.EMPLOYEE });
+    try {
+      await addUser(newUser);
+      addToast('User added successfully.', 'success');
+      setShowAddModal(false);
+      setNewUser({ name: '', email: '', password: '', phone: '', department: 'Development', role: ROLES.EMPLOYEE });
+    } catch (err) {
+      addToast(err.message || 'Failed to add user.', 'error');
+    }
   };
 
-  const handleToggleStatus = (user) => {
-    deactivateUser(user.id);
-    addToast(
-      `${user.name} has been ${user.status === 'Active' ? 'deactivated' : 'activated'}.`,
-      'success'
-    );
+  const handleToggleStatus = async (user) => {
+    try {
+      await deactivateUser(user.id);
+      addToast(
+        `${user.name} has been ${user.status === 'Active' ? 'deactivated' : 'activated'}.`,
+        'success'
+      );
+    } catch (err) {
+      addToast(err.message || 'Failed to update status.', 'error');
+    }
   };
 
   return (
@@ -191,6 +200,13 @@ export default function Users() {
               value={newUser.phone}
               onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
               placeholder="Enter phone number"
+            />
+            <Input
+              label="Password (Optional)"
+              type="password"
+              value={newUser.password}
+              onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+              placeholder="Default: worknest123"
             />
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Department</label>
