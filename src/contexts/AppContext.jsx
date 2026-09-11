@@ -64,12 +64,23 @@ export function AppProvider({ children }) {
           setUsers(fetchedUsers);
         }
 
-        if (projectsRes?.data && Array.isArray(projectsRes.data)) {
-          setProjects(projectsRes.data);
-        }
-
-        if (tasksRes?.data && Array.isArray(tasksRes.data)) {
-          setTasks(tasksRes.data);
+        if (projectsRes?.data && Array.isArray(projectsRes.data) && tasksRes?.data && Array.isArray(tasksRes.data)) {
+          const liveTasks = tasksRes.data;
+          const liveProjects = projectsRes.data.map((p) => {
+            const pTasks = liveTasks.filter((t) => t.projectId === p.id);
+            if (pTasks.length === 0) return { ...p, progress: 0 };
+            const completed = pTasks.filter((t) => t.status === 'Completed').length;
+            return { ...p, progress: Math.round((completed / pTasks.length) * 100) };
+          });
+          setProjects(liveProjects);
+          setTasks(liveTasks);
+        } else {
+          if (projectsRes?.data && Array.isArray(projectsRes.data)) {
+            setProjects(projectsRes.data);
+          }
+          if (tasksRes?.data && Array.isArray(tasksRes.data)) {
+            setTasks(tasksRes.data);
+          }
         }
 
         if (companiesRes?.data && Array.isArray(companiesRes.data)) {
@@ -295,23 +306,38 @@ export function AppProvider({ children }) {
 
   // ── Task CRUD (Saves directly to PostgreSQL) ──
   const addTask = useCallback(async (task) => {
+    let savedTask;
     try {
       const res = await api.post('/tasks', task);
       if (res?.data) {
-        setTasks((prev) => [res.data, ...prev]);
-        return res.data;
+        savedTask = res.data;
       }
     } catch (err) {
       console.warn('API addTask failed, using local state:', err);
     }
 
-    const newTask = {
-      ...task,
-      id: `task-${Date.now()}`,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    setTasks((prev) => [newTask, ...prev]);
-    return newTask;
+    if (!savedTask) {
+      savedTask = {
+        ...task,
+        id: `task-${Date.now()}`,
+        createdAt: new Date().toISOString().split('T')[0],
+      };
+    }
+
+    setTasks((prevTasks) => {
+      const updated = [savedTask, ...prevTasks];
+      if (savedTask.projectId) {
+        const projTasks = updated.filter((t) => t.projectId === savedTask.projectId);
+        const completed = projTasks.filter((t) => t.status === 'Completed').length;
+        const progress = projTasks.length > 0 ? Math.round((completed / projTasks.length) * 100) : 0;
+        setProjects((prevProjects) =>
+          prevProjects.map((p) => (p.id === savedTask.projectId ? { ...p, progress } : p))
+        );
+      }
+      return updated;
+    });
+
+    return savedTask;
   }, []);
 
   const updateTask = useCallback(async (id, updates) => {
@@ -321,9 +347,19 @@ export function AppProvider({ children }) {
       console.warn('API updateTask failed, using local state:', err);
     }
 
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
-    );
+    setTasks((prevTasks) => {
+      const updated = prevTasks.map((t) => (t.id === id ? { ...t, ...updates } : t));
+      const target = updated.find((t) => t.id === id);
+      if (target?.projectId) {
+        const projTasks = updated.filter((t) => t.projectId === target.projectId);
+        const completed = projTasks.filter((t) => t.status === 'Completed').length;
+        const progress = projTasks.length > 0 ? Math.round((completed / projTasks.length) * 100) : 0;
+        setProjects((prevProjects) =>
+          prevProjects.map((p) => (p.id === target.projectId ? { ...p, progress } : p))
+        );
+      }
+      return updated;
+    });
   }, []);
 
   const deleteTask = useCallback(async (id) => {
@@ -333,7 +369,19 @@ export function AppProvider({ children }) {
       console.warn('API deleteTask failed, using local state:', err);
     }
 
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+    setTasks((prevTasks) => {
+      const target = prevTasks.find((t) => t.id === id);
+      const updated = prevTasks.filter((t) => t.id !== id);
+      if (target?.projectId) {
+        const projTasks = updated.filter((t) => t.projectId === target.projectId);
+        const completed = projTasks.filter((t) => t.status === 'Completed').length;
+        const progress = projTasks.length > 0 ? Math.round((completed / projTasks.length) * 100) : 0;
+        setProjects((prevProjects) =>
+          prevProjects.map((p) => (p.id === target.projectId ? { ...p, progress } : p))
+        );
+      }
+      return updated;
+    });
   }, []);
 
   // ── Lookup Helpers ──
