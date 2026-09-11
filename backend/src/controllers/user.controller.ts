@@ -19,7 +19,8 @@ export class UserController {
   static async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const user = await UserService.getUserById(req.params.id, req.user);
+      const id = req.params.id as string;
+      const user = await UserService.getUserById(id, req.user);
       res.status(200).json({
         success: true,
         data: user,
@@ -45,7 +46,8 @@ export class UserController {
   static async update(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const updated = await UserService.updateUser(req.params.id, req.body, req.user);
+      const id = req.params.id as string;
+      const updated = await UserService.updateUser(id, req.body, req.user);
       res.status(200).json({
         success: true,
         data: updated,
@@ -58,7 +60,8 @@ export class UserController {
   static async toggleStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const updated = await UserService.toggleUserStatus(req.params.id, req.user);
+      const id = req.params.id as string;
+      const updated = await UserService.toggleUserStatus(id, req.user);
       res.status(200).json({
         success: true,
         data: updated,

@@ -18,7 +18,8 @@ export class CompanyController {
   static async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const company = await CompanyService.getCompanyById(req.params.id, req.user);
+      const id = req.params.id as string;
+      const company = await CompanyService.getCompanyById(id, req.user);
       res.status(200).json({
         success: true,
         data: company,

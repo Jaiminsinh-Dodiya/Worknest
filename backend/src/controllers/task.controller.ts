@@ -33,7 +33,8 @@ export class TaskController {
   static async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const task = await TaskService.getTaskById(req.params.id, req.user);
+      const id = req.params.id as string;
+      const task = await TaskService.getTaskById(id, req.user);
       res.status(200).json({
         success: true,
         data: task,
@@ -59,7 +60,8 @@ export class TaskController {
   static async update(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const task = await TaskService.updateTask(req.params.id, req.body, req.user);
+      const id = req.params.id as string;
+      const task = await TaskService.updateTask(id, req.body, req.user);
       res.status(200).json({
         success: true,
         data: task,
@@ -72,7 +74,8 @@ export class TaskController {
   static async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const result = await TaskService.deleteTask(req.params.id, req.user);
+      const id = req.params.id as string;
+      const result = await TaskService.deleteTask(id, req.user);
       res.status(200).json(result);
     } catch (error) {
       next(error);

@@ -19,7 +19,8 @@ export class ProjectController {
   static async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const project = await ProjectService.getProjectById(req.params.id, req.user);
+      const id = req.params.id as string;
+      const project = await ProjectService.getProjectById(id, req.user);
       res.status(200).json({
         success: true,
         data: project,
@@ -45,7 +46,8 @@ export class ProjectController {
   static async update(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const project = await ProjectService.updateProject(req.params.id, req.body, req.user);
+      const id = req.params.id as string;
+      const project = await ProjectService.updateProject(id, req.body, req.user);
       res.status(200).json({
         success: true,
         data: project,
