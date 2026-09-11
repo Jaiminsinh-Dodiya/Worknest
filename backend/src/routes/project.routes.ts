@@ -13,6 +13,7 @@ const createProjectSchema = z.object({
   body: z.object({
     name: z.string().min(2, 'Project name must be at least 2 characters'),
     description: z.string().min(5, 'Description must be at least 5 characters'),
+    department: z.string().optional(),
     managerId: z.string().min(1, 'Manager is required'),
     teamMemberIds: z.array(z.string()).optional(),
     companyId: z.string().optional(),
@@ -26,6 +27,7 @@ const updateProjectSchema = z.object({
   body: z.object({
     name: z.string().min(2).optional(),
     description: z.string().min(5).optional(),
+    department: z.string().optional(),
     managerId: z.string().optional(),
     teamMemberIds: z.array(z.string()).optional(),
     progress: z.number().min(0).max(100).optional(),
