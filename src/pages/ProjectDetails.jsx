@@ -132,10 +132,10 @@ export default function ProjectDetails() {
     setEditProjectForm({
       name: project.name || '',
       description: project.description || '',
+      department: project.department || 'Development',
       status: project.status || 'Active',
       managerId: project.managerId || '',
       dueDate: project.dueDate ? new Date(project.dueDate).toISOString().split('T')[0] : '',
-      progress: project.progress || 0,
       teamMemberIds: project.teamMemberIds || [],
     });
     setShowEditProject(true);
@@ -145,8 +145,13 @@ export default function ProjectDetails() {
     e.preventDefault();
     if (!editProjectForm.name) return;
     updateProject(id, {
-      ...editProjectForm,
-      progress: Number(editProjectForm.progress),
+      name: editProjectForm.name,
+      description: editProjectForm.description,
+      department: editProjectForm.department,
+      status: editProjectForm.status,
+      managerId: editProjectForm.managerId,
+      dueDate: editProjectForm.dueDate,
+      teamMemberIds: editProjectForm.teamMemberIds,
     });
     addToast('Project updated successfully.', 'success');
     setShowEditProject(false);
@@ -187,6 +192,11 @@ export default function ProjectDetails() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{project.name}</h1>
+              {project.department && (
+                <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">
+                  {project.department}
+                </span>
+              )}
               {canManageProjects ? (
                 <select
                   value={project.status}
@@ -473,7 +483,25 @@ export default function ProjectDetails() {
                 className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 resize-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Department
+                </label>
+                <select
+                  value={editProjectForm.department}
+                  onChange={(e) =>
+                    setEditProjectForm({ ...editProjectForm, department: e.target.value })
+                  }
+                  className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+                >
+                  <option value="Development">Development</option>
+                  <option value="Design">Design</option>
+                  <option value="Quality Assurance">Quality Assurance</option>
+                  <option value="Human Resources">Human Resources</option>
+                  <option value="Management">Management</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Status
@@ -483,7 +511,7 @@ export default function ProjectDetails() {
                   onChange={(e) =>
                     setEditProjectForm({ ...editProjectForm, status: e.target.value })
                   }
-                  className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+                  className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
                 >
                   <option value="Active">Active</option>
                   <option value="On Hold">On Hold</option>
@@ -499,7 +527,7 @@ export default function ProjectDetails() {
                   onChange={(e) =>
                     setEditProjectForm({ ...editProjectForm, managerId: e.target.value })
                   }
-                  className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+                  className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200"
                 >
                   <option value="">Select manager</option>
                   {allUsers
@@ -524,21 +552,16 @@ export default function ProjectDetails() {
               />
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Progress ({editProjectForm.progress}%)
+                  Calculated Progress
                 </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={editProjectForm.progress}
-                  onChange={(e) =>
-                    setEditProjectForm({
-                      ...editProjectForm,
-                      progress: Number(e.target.value),
-                    })
-                  }
-                  className="w-full mt-2 accent-primary-600"
-                />
+                <div className="flex items-center gap-2.5 mt-1 px-3 py-2 rounded-lg bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                  <span className="text-sm font-bold text-primary-600 dark:text-primary-400">
+                    {project.progress}%
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    ({projectTasks ? projectTasks.filter((t) => t.status === 'Completed').length : 0} of {projectTasks?.length || 0} tasks completed)
+                  </span>
+                </div>
               </div>
             </div>
 
