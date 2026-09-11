@@ -11,6 +11,7 @@ import Projects from './pages/Projects';
 import ProjectDetails from './pages/ProjectDetails';
 import AIAssistant from './pages/AIAssistant';
 import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 import MyTasks from './pages/MyTasks';
 
 // Role Dashboards (alias routes)
@@ -131,7 +132,7 @@ export default function App() {
         {/* Shared Pages */}
         <Route path="/ai" element={<AIAssistant />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/settings" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/login" replace />} />
