@@ -147,18 +147,19 @@ async function callNvidiaApi(systemPrompt: string, userMessage: string): Promise
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
         ],
-        max_tokens: 1024,
+        max_tokens: 512,
         temperature: 0.7,
         stream: false,
       }),
-      // 30-second hard timeout — Node 18+ supports AbortSignal.timeout
-      signal: AbortSignal.timeout(30_000),
+      // 60-second hard timeout for remote LLM inference
+      signal: AbortSignal.timeout(60_000),
     });
   } catch (err: any) {
+    console.error('[AI] Fetch network error:', err);
     if (err.name === 'TimeoutError' || err.name === 'AbortError') {
       throw new AppError('AI request timed out. Please try again.', 504);
     }
-    throw new AppError('Failed to reach the AI service. Please try again later.', 502);
+    throw new AppError(`Failed to reach the AI service: ${err.message || 'Network error'}`, 502);
   }
 
   if (response.status === 401) {
