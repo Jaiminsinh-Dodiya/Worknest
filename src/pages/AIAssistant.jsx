@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, Sparkles } from 'lucide-react';
+import { Send, Bot, Sparkles, AlertCircle } from 'lucide-react';
 import { generateResponse } from '../services/aiService';
 import { suggestedPrompts } from '../data/aiResponses';
 import Avatar from '../components/ui/Avatar';
@@ -11,7 +11,8 @@ export default function AIAssistant() {
     {
       id: 'welcome',
       role: 'ai',
-      content: 'Hello! I\'m your WorkNest AI assistant. I can help you with project summaries, task management, status updates, and more. What would you like to know?',
+      content:
+        "Hello! I'm your WorkNest AI assistant powered by your company's live context. I can help summarize projects, check deadlines, prioritize tasks, and answer team questions. How can I help you today?",
     },
   ]);
   const [input, setInput] = useState('');
@@ -28,6 +29,9 @@ export default function AIAssistant() {
   }, [messages, isTyping]);
 
   const handleSend = async (text) => {
+    // Prevent duplicate requests while waiting for AI response
+    if (isTyping) return;
+
     const prompt = text || input;
     if (!prompt.trim()) return;
 
@@ -49,13 +53,14 @@ export default function AIAssistant() {
         content: response,
       };
       setMessages((prev) => [...prev, aiMessage]);
-    } catch {
+    } catch (err) {
       setMessages((prev) => [
         ...prev,
         {
           id: `error-${Date.now()}`,
           role: 'ai',
-          content: 'Sorry, I encountered an error. Please try again.',
+          isError: true,
+          content: err?.message || 'Sorry, I encountered an error. Please try again.',
         },
       ]);
     } finally {
@@ -82,7 +87,9 @@ export default function AIAssistant() {
           </div>
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">AI Assistant</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Your WorkNest productivity assistant</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Your WorkNest productivity assistant
+            </p>
           </div>
         </div>
       </div>
@@ -97,36 +104,54 @@ export default function AIAssistant() {
             }`}
           >
             {message.role === 'ai' && (
-              <div className="flex-shrink-0 w-8 h-8 bg-primary-100 dark:bg-primary-900/40 rounded-full flex items-center justify-center">
-                <Bot size={16} className="text-primary-600 dark:text-primary-400" />
+              <div
+                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                  message.isError
+                    ? 'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400'
+                    : 'bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400'
+                }`}
+              >
+                {message.isError ? <AlertCircle size={16} /> : <Bot size={16} />}
               </div>
             )}
             <div
               className={`max-w-[75%] px-4 py-3 rounded-xl text-sm leading-relaxed ${
                 message.role === 'user'
                   ? 'bg-primary-600 text-white rounded-br-sm'
+                  : message.isError
+                  ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/50 rounded-bl-sm'
                   : 'bg-gray-50 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-bl-sm'
               }`}
             >
               <div className="whitespace-pre-wrap">{message.content}</div>
             </div>
             {message.role === 'user' && (
-              <Avatar name={currentUser.name} size="sm" />
+              <Avatar name={currentUser?.name || 'User'} size="sm" />
             )}
           </div>
         ))}
 
-        {/* Typing indicator */}
+        {/* Loading / Typing indicator */}
         {isTyping && (
           <div className="flex gap-3 animate-fadeIn">
             <div className="flex-shrink-0 w-8 h-8 bg-primary-100 dark:bg-primary-900/40 rounded-full flex items-center justify-center">
               <Bot size={16} className="text-primary-600 dark:text-primary-400" />
             </div>
-            <div className="bg-gray-50 dark:bg-slate-700 px-4 py-3 rounded-xl rounded-bl-sm">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <div className="bg-gray-50 dark:bg-slate-700 px-4 py-3 rounded-xl rounded-bl-sm flex items-center gap-2">
+              <span className="text-xs text-gray-500 dark:text-gray-400">WorkNest AI is thinking</span>
+              <div className="flex gap-1 items-center">
+                <div
+                  className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce"
+                  style={{ animationDelay: '0ms' }}
+                />
+                <div
+                  className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce"
+                  style={{ animationDelay: '150ms' }}
+                />
+                <div
+                  className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce"
+                  style={{ animationDelay: '300ms' }}
+                />
               </div>
             </div>
           </div>
@@ -141,8 +166,10 @@ export default function AIAssistant() {
           {suggestedPrompts.map((prompt) => (
             <button
               key={prompt}
+              type="button"
+              disabled={isTyping}
               onClick={() => handleSend(prompt)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 rounded-full hover:border-primary-300 dark:hover:border-primary-600 hover:text-primary-700 dark:hover:text-primary-400 transition-all duration-200"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 rounded-full hover:border-primary-300 dark:hover:border-primary-600 hover:text-primary-700 dark:hover:text-primary-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Sparkles size={12} />
               {prompt}
@@ -151,7 +178,7 @@ export default function AIAssistant() {
         </div>
       )}
 
-      {/* Input */}
+      {/* Input Form */}
       <div className="flex gap-3">
         <div className="flex-1 relative">
           <input
@@ -160,12 +187,13 @@ export default function AIAssistant() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask WorkNest AI..."
+            placeholder={isTyping ? 'WorkNest AI is generating response...' : 'Ask WorkNest AI...'}
             disabled={isTyping}
             className="w-full px-4 py-3 text-sm bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 disabled:opacity-50"
           />
         </div>
         <button
+          type="button"
           onClick={() => handleSend()}
           disabled={!input.trim() || isTyping}
           className="px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
