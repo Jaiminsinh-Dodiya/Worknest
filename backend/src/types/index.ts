@@ -35,19 +35,43 @@ export interface AIMessage {
   content: string;
 }
 
-/** Company-level context injected by the backend into the system prompt */
+/** Role- and tenant-scoped context injected by the backend into the AI system prompt */
 export interface AIContext {
   companyName?: string;
+  userName?: string;
   userRole: string;
   userDepartment?: string;
+  teamSize?: number;
+  departmentCounts?: Record<string, number>;
+  userTasks?: Array<{
+    title: string;
+    priority: string;
+    status: string;
+    dueDate: string | null;
+    isOverdue: boolean;
+    projectName: string;
+  }>;
   projectSummaries?: Array<{
     name: string;
     status: string;
     progress: number;
     dueDate: string | null;
+    isOverdue: boolean;
     taskCount: number;
+    completedTasks: number;
+    overdueTasks: number;
+    managerName?: string;
   }>;
-  teamSize?: number;
+  platformSummary?: {
+    totalCompanies: number;
+    totalUsers: number;
+    companies: Array<{
+      name: string;
+      plan: string;
+      userCount: number;
+      projectCount: number;
+    }>;
+  };
 }
 
 export interface AIRequest {
