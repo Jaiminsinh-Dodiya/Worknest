@@ -89,3 +89,27 @@ Because the frontend architecture has been decoupled:
 1. Replace `authService.login()` body with `POST /api/auth/login` call.
 2. Replace `AppContext` in-memory state with API fetch calls (`react-query` or `axios`).
 3. Retain all existing role configurations, route guards, dashboard widgets, and UI components untouched.
+
+---
+
+## 🎯 Phase 7, 8 & 9 Milestones (Completed)
+
+### Phase 7 — NVIDIA AI Backend Gateway ✅
+- Secure Express server-side gateway (`POST /api/ai/chat`)
+- Environment variable configuration (`NVIDIA_API_KEY` stored exclusively in gitignored `backend/.env`)
+- Native Node.js `fetch` with `AbortSignal.timeout(60_000)`
+- Integrated with NVIDIA NIM (`meta/llama-3.2-11b-vision-instruct`)
+
+### Phase 8 — Frontend AI Assistant Integration ✅
+- Replaced frontend mock AI service in `src/services/aiService.js` with live backend API call
+- Integrated with JWT token stored in `localStorage`
+- Real-time thinking indicator and safe error bubbling in `AIAssistant.jsx`
+- Prevention of duplicate network requests during inference
+
+### Phase 9 — AI Capability Refinement & Read-Only Grounding ✅
+- **Task Prioritization**: Auto-analyzes active and overdue tasks assigned to the user
+- **Project Analysis**: Computes overdue task counts, completion percentages, and delivery risks
+- **Role-Aware Work Assistance**: Adapts context for `SUPER_ADMIN`, `COMPANY_OWNER`, `HR`, `MANAGER`, and `EMPLOYEE`
+- **Tenant Isolation**: Strictly enforces `user.companyId` from verified JWT
+- **Anti-Hallucination Guardrails**: Rejects requests about non-existent projects (e.g., "Mars Colony Project") without fabricating facts
+

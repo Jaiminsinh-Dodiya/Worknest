@@ -356,3 +356,41 @@ When transitioning from mock authentication and in-memory state to the live Node
 1. **Authentication API**: Replace `authService.login()` with `POST /api/auth/login`. On success, store the returned JWT in secure storage.
 2. **Role Mapping**: The backend database enum `UserRole` will match `ROLES` (`SUPER_ADMIN`, `COMPANY_OWNER`, `HR`, `MANAGER`, `EMPLOYEE`) 1-to-1.
 3. **Tenant Query Filtering**: The backend will automatically inject `WHERE companyId = req.user.companyId` on all project and task queries for tenant roles, mirroring the behavior currently implemented in `AppContext.jsx`.
+
+---
+
+## 🤖 9. AI Architecture & Phase 9 Context Refinement
+
+### 9.1 Read-Only Workplace Assistant Design
+WorkNest AI is designed as a secure, read-only analytical assistant layer over PostgreSQL data. It does not execute SQL directly, cannot perform write/delete mutations, and cannot change user roles or permissions. All write actions are strictly reserved for the authenticated REST API routes.
+
+```text
+React / Electron Frontend
+       │
+       │ POST /api/ai/chat  { "message": "..." }
+       ▼
+Express API Router (authenticate middleware)
+       │  (Extracts user.userId, user.role, user.companyId from verified JWT)
+       ▼
+AIService.buildContext(user)
+       │  ├── Query user profile (Name, Department)
+       │  ├── Query assigned tasks (Prioritized by due date, marked [OVERDUE])
+       │  ├── Query company projects (Progress %, Overdue counts, Manager)
+       │  └── Query department headcount & distribution (Tenant isolated)
+       ▼
+AIService.buildSystemPrompt(context)
+       │  (Injects structured WorkNest data + Hallucination-Resistance rules)
+       ▼
+NVIDIA NIM Cloud Gateway (meta/llama-3.2-11b-vision-instruct)
+       │
+       ▼
+Structured, Grounded Workplace Response (HTTP 200)
+```
+
+### 9.2 Key Capabilities (Phase 9)
+1. **Task Prioritization**: Automatically analyzes assigned active tasks for the authenticated user, prioritizing High Priority and overdue items with clear rationale.
+2. **Project Analysis**: Analyzes project progress, deadlines, overdue task counts, and manager assignments to identify projects needing attention.
+3. **Role-Aware Assistance**: Adapts to the user's canonical role (`SUPER_ADMIN`, `COMPANY_OWNER`, `HR`, `MANAGER`, `EMPLOYEE`).
+4. **Strict Tenant Isolation**: `companyId` is derived exclusively from the verified JWT payload; frontend client parameters cannot override or access cross-tenant data.
+5. **Anti-Hallucination Guardrails**: Explicitly trained via system instructions to state when an entity or project (e.g., "Mars Colony Project") is absent from the company's records rather than fabricating details.
+
