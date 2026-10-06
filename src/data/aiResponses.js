@@ -1,9 +1,9 @@
 export const suggestedPrompts = [
-  'Summarize my projects',
-  'Show my pending tasks',
-  'Generate a project description',
-  'Suggest task priorities',
-  'Write a status update',
+  'Which tasks should I prioritize today?',
+  'Which projects are behind schedule?',
+  'Summarize my active projects',
+  'What should I focus on?',
+  'Give me a company overview',
 ];
 
 export const mockResponses = {
